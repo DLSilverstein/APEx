@@ -1,0 +1,43 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>TroubleshootingTips</title>
+</head>
+
+<body>
+<h1>&nbsp;APEx Troubleshooting Tips Courtesy of Dr. Leah Granger, NC State University</h1>
+<p><strong>When installing APEx…</strong><br>
+  *The file  MUST have its <u>original name</u> (APEx.xlam).<br>
+*To avoid  future problems, <u>decide where you want the file permanently located before  installing</u>. Many choose to leave it in their downloads folder so it is not accidentally  moved later.</p>
+<p>As  mentioned on the APEx download site, you likely need to unblock the file. If it  remains blocked, APEx will only work until you restart Excel, at which point  you have to re-add it. If you would like it to always be enabled, </p>
+<ul>
+  <li><img width="163" height="227" src="images/clip_image002.png" alt="A screenshot of a computer  Description automatically generated"><br clear="ALL">
+    First try to unblock it using  the method mentioned on the APEx download site, where you right click the file,  click properties, and then click the &ldquo;unblock&rdquo; checkbox.<br>
+    <br>
+  </li>
+  <li>If  that option does not appear, you can do the same thing via command line. First,  get the file&rsquo;s complete object name from that same properties dialog box: switch  to the &ldquo;Security&rdquo; tab and<strong> copy the complete object name</strong>.</li>
+</ul>
+<p><br>
+  <img width="341" height="89" src="images/clip_image005.png" alt="A screenshot of a computer  Description automatically generated"><br>
+</p>
+<ul>
+  <li><strong>Open  Windows PowerShell</strong> (which is installed by default in every recent version of Windows – you can  find it by your windows search). </li>
+  <li><strong>Type  the following command</strong>,  replacing the **** with the object name you just copied. You can paste simply  by right clicking in Powershell.<br>
+    <br>
+    unblock-file -path **** -confirm<br>
+    <br>
+    <img width="480" height="77" src="images/clip_image007.png" alt="A computer screen shot of a blue screen  Description automatically generated"><br>
+    <br>
+    <br>
+  </li>
+  <li><strong>Press  Enter.<br>
+    </strong><br>
+    <img width="480" height="125" src="images/clip_image008.png" alt="A computer screen shot of a blue screen  Description automatically generated"><br>
+  </li>
+  <li>Read  the confirmation prompt, double checking that this is in fact the APEx file. If  so, <br>
+    <strong>type Y and press Enter</strong>.</li>
+</ul>
+<p>APEx  should now remain enabled every time you start Excel! </p>
+</body>
+</html>
