@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" class=" js"><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <meta charset="utf-8">
+<link rel="canonical" href="https://silverstein.engr.uky.edu/apex">
+<meta name="Generator" content="Drupal 10 (https://www.drupal.org)">
+<meta name="MobileOptimized" content="width">
+<meta name="HandheldFriendly" content="true">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="https://silverstein.engr.uky.edu/themes/custom/engrlab/favicon.ico" type="image/vnd.microsoft.icon">
+
+    <title>APEx: Analysis of Processes with Excel | David L. Silverstein, Ph.D. P.E.</title>
+    <link rel="stylesheet" media="all" href="APEx_%20Analysis%20of%20Processes%20with%20Excel_files/css_V_2KLo1ES24iqekYjYoZ9CwiE5sJsaDNmMoKtfj9Q98.css">
+<link rel="stylesheet" media="all" href="APEx_%20Analysis%20of%20Processes%20with%20Excel_files/css_OVHBSzMH2yyqp_Mi5E6Y78TyMWvK8KAkVKrYjBpeQaQ.css">
+
+    
+      <style class="fslightbox-styles">.fslightbox-absoluted{position:absolute;top:0;left:0}.fslightbox-fade-in{animation:fslightbox-fade-in .3s cubic-bezier(0,0,.7,1)}.fslightbox-fade-out{animation:fslightbox-fade-out .3s ease}.fslightbox-fade-in-strong{animation:fslightbox-fade-in-strong .3s cubic-bezier(0,0,.7,1)}.fslightbox-fade-out-strong{animation:fslightbox-fade-out-strong .3s ease}@keyframes fslightbox-fade-in{from{opacity:.65}to{opacity:1}}@keyframes fslightbox-fade-out{from{opacity:.35}to{opacity:0}}@keyframes fslightbox-fade-in-strong{from{opacity:.3}to{opacity:1}}@keyframes fslightbox-fade-out-strong{from{opacity:1}to{opacity:0}}.fslightbox-cursor-grabbing{cursor:grabbing}.fslightbox-full-dimension{width:100%;height:100%}.fslightbox-open{overflow:hidden;height:100%}.fslightbox-flex-centered{display:flex;justify-content:center;align-items:center}.fslightbox-opacity-0{opacity:0!important}.fslightbox-opacity-1{opacity:1!important}.fslightbox-scrollbarfix{padding-right:17px}.fslightbox-transform-transition{transition:transform .3s}.fslightbox-container{font-family:Arial,sans-serif;position:fixed;top:0;left:0;background:linear-gradient(rgba(30,30,30,.9),#000 1810%);touch-action:pinch-zoom;z-index:1000000000;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}.fslightbox-container *{box-sizing:border-box}.fslightbox-svg-path{transition:fill .15s ease;fill:#ddd}.fslightbox-nav{height:45px;width:100%;position:absolute;top:0;left:0}.fslightbox-slide-number-container{display:flex;justify-content:center;align-items:center;position:relative;height:100%;font-size:15px;color:#d7d7d7;z-index:0;max-width:55px;text-align:left}.fslightbox-slide-number-container .fslightbox-flex-centered{height:100%}.fslightbox-slash{display:block;margin:0 5px;width:1px;height:12px;transform:rotate(15deg);background:#fff}.fslightbox-toolbar{position:absolute;z-index:3;right:0;top:0;height:100%;display:flex;background:rgba(35,35,35,.65)}.fslightbox-toolbar-button{height:100%;width:45px;cursor:pointer}.fslightbox-toolbar-button:hover .fslightbox-svg-path{fill:#fff}.fslightbox-slide-btn-container{display:flex;align-items:center;padding:12px 12px 12px 6px;position:absolute;top:50%;cursor:pointer;z-index:3;transform:translateY(-50%)}@media (min-width:476px){.fslightbox-slide-btn-container{padding:22px 22px 22px 6px}}@media (min-width:768px){.fslightbox-slide-btn-container{padding:30px 30px 30px 6px}}.fslightbox-slide-btn-container:hover .fslightbox-svg-path{fill:#f1f1f1}.fslightbox-slide-btn{padding:9px;font-size:26px;background:rgba(35,35,35,.65)}@media (min-width:768px){.fslightbox-slide-btn{padding:10px}}@media (min-width:1600px){.fslightbox-slide-btn{padding:11px}}.fslightbox-slide-btn-container-previous{left:0}@media (max-width:475.99px){.fslightbox-slide-btn-container-previous{padding-left:3px}}.fslightbox-slide-btn-container-next{right:0;padding-left:12px;padding-right:3px}@media (min-width:476px){.fslightbox-slide-btn-container-next{padding-left:22px}}@media (min-width:768px){.fslightbox-slide-btn-container-next{padding-left:30px}}@media (min-width:476px){.fslightbox-slide-btn-container-next{padding-right:6px}}.fslightbox-down-event-detector{position:absolute;z-index:1}.fslightbox-slide-swiping-hoverer{z-index:4}.fslightbox-invalid-file-wrapper{font-size:22px;color:#eaebeb;margin:auto}.fslightbox-video{object-fit:cover}.fslightbox-youtube-iframe{border:0}.fslightboxl{display:block;margin:auto;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:67px;height:67px}.fslightboxl div{box-sizing:border-box;display:block;position:absolute;width:54px;height:54px;margin:6px;border:5px solid;border-color:#999 transparent transparent transparent;border-radius:50%;animation:fslightboxl 1.2s cubic-bezier(.5,0,.5,1) infinite}.fslightboxl div:nth-child(1){animation-delay:-.45s}.fslightboxl div:nth-child(2){animation-delay:-.3s}.fslightboxl div:nth-child(3){animation-delay:-.15s}@keyframes fslightboxl{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}.fslightbox-source{position:relative;z-index:2;opacity:0}</style></head>
+  <body class="node-16 node-type--page not-frontpage node--page page--entity-node-canonical user-anonymous path-node language--en">
+            <a href="#main-content" class="visually-hidden focusable">
+      Skip to main content
+    </a>
+    
+      <div class="dialog-off-canvas-main-canvas" data-off-canvas-main-canvas="">
+    
+
+<div class="page">
+  
+
+<nav class="navbar navbar-expand-lg navbar-engrlab vstack p-0">
+  <div class="container nav-global d-none d-lg-flex py-1">
+        <ul class="navbar-nav top-nav-left">
+                                <li class="nav-item">
+            <a class="nav-link ukcoe" href="https://www.engr.uky.edu/" target="_blank" rel="noopener">University of Kentucky College of Engineering <span class="visually-hidden">(opens in a new tab)</span></a>
+              </li>
+  
+    </ul>
+
+        <ul class="navbar-nav top-nav-right">
+                                <li class="nav-item">
+            <a class="nav-link " href="https://www.engr.uky.edu/programs">Programs</a>
+              </li>
+                          <li class="nav-item">
+            <a class="nav-link " href="https://www.engr.uky.edu/directory">Directory</a>
+              </li>
+                          <li class="nav-item">
+            <a class="nav-link " href="https://www.engr.uky.edu/alumni">Alumni</a>
+              </li>
+                          <li class="nav-item">
+            <a class="nav-link myuk" href="https://myuk.uky.edu/" target="_blank" rel="noopener">myUK <span class="visually-hidden">(opens in a new tab)</span></a>
+              </li>
+  
+    </ul>
+  </div>
+  <div class="container-lg">
+        <a href="https://silverstein.engr.uky.edu/" class="navbar-brand w-75" aria-label="David L. Silverstein, Ph.D. P.E.">
+      <svg class="float-start" width="70" alt="UK logo" focusable="false" preserveAspectRatio="xMidYMid meet" viewBox="0 0 85 69" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <g fill="currentColor" fill-rule="evenodd">
+          <path d="M24.466 33.753H19.88V9.234h4.587V3.106H3.056v6.128h4.589v24.52l6.118 6.129h10.703zm15.292 6.13h10.705l6.117-6.13V9.236h4.586v-6.13H39.758v6.13h4.588v24.517h-4.588z"></path>
+          <path d="M61.55 45.628l13.38-13.407h6.117v-6.13H58.108v6.13h2.294l-9.174 9.193H38.23v-9.193h4.588v-6.13h-21.41v6.13h4.587v27.581h-4.587v6.129h21.41v-6.129H38.23v-9.194h12.998l9.173 9.194h-2.293v6.129h22.939v-6.129h-5.353z"></path>
+          <path d="M36.7.041V12.3h4.588v10.728H22.937V12.299h4.589V.041H0V12.3h4.587v22.985h.003l-.003.002 7.646 7.66h10.705v13.792h-4.589v12.26h27.525v-12.26h-4.586v-3.066h8.41l5.353 5.365v9.96h29.052l.002-12.259h-6.882L66.138 45.63l10.32-10.343h7.647l-.002-12.26-24.465.001V12.299h4.587V.041H36.701zm1.528 1.533h24.469v9.195h-4.589v13.79h24.468v9.193h-6.882L63.843 45.63 76.46 58.27h6.116v9.196H56.58V58.27h-.001l-6.118-6.13H39.758v6.13h4.587v9.196H19.878V58.27h4.59V41.415h-11.47l-6.883-6.897v-23.75H1.528V1.574h24.467v9.195h-4.588v13.79h21.41v-13.79h-4.59V1.574z"></path>
+        </g>
+      </svg>
+      <span class="d-flex navbar-brand ps-2 mb-0 h1 text-wrap">David L. Silverstein, Ph.D. P.E.</span>
+    </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span><span class="menu-text"></span></button>
+
+    <div class="collapse navbar-collapse nowrap" id="navbarSupportedContent">
+      
+            <ul class="navbar-nav navbar-mainmenu ms-auto d-none d-lg-flex">
+                                <li class="nav-item dropdown">
+                <a class="nav-link " data-bs-toggle="dropdown" role="button" href="#" aria-expanded="false">Courses</a>
+        <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item " href="https://silverstein.engr.uky.edu/courses/cme-006">CME 006</a></li>
+                                    <li><a class="dropdown-item " href="https://silverstein.engr.uky.edu/courses/cme-101">CME 101</a></li>
+                                    <li><a class="dropdown-item " href="https://silverstein.engr.uky.edu/courses/cme-199">CME 199</a></li>
+                                    <li><a class="dropdown-item " href="https://silverstein.engr.uky.edu/courses/cme-200">CME 200</a></li>
+                                    <li><a class="dropdown-item " href="https://silverstein.engr.uky.edu/courses/cme-320">CME 320</a></li>
+                                    <li><a class="dropdown-item " href="https://silverstein.engr.uky.edu/courses/cme-415">CME 415</a></li>
+                                    <li><a class="dropdown-item " href="https://silverstein.engr.uky.edu/courses/cme-420">CME 420</a></li>
+                                    <li><a class="dropdown-item " href="https://silverstein.engr.uky.edu/courses/cme-425">CME 425</a></li>
+                                    <li><a class="dropdown-item " href="https://silverstein.engr.uky.edu/courses/cme-432">CME 432</a></li>
+                                    <li><a class="dropdown-item " href="https://silverstein.engr.uky.edu/courses/cme-455">CME 455</a></li>
+                                    <li><a class="dropdown-item " href="https://silverstein.engr.uky.edu/courses/cme-456">CME 456</a></li>
+                                    <li><a class="dropdown-item " href="https://silverstein.engr.uky.edu/courses/cme-462">CME 462</a></li>
+                                    <li><a class="dropdown-item " href="https://silverstein.engr.uky.edu/courses/cme-470">CME 470</a></li>
+                                    <li><a class="dropdown-item " href="https://silverstein.engr.uky.edu/courses/cme-550">CME 550</a></li>
+                                    <li><a class="dropdown-item " href="https://silverstein.engr.uky.edu/courses/cme-599">CME 599</a></li>
+                    </ul>
+        </li>
+                          <li class="nav-item">
+            <a class="nav-link  active" href="https://silverstein.engr.uky.edu/apex" aria-current="&quot;page&quot;">APEx</a>
+              </li>
+                          <li class="nav-item">
+            <a class="nav-link " href="https://silverstein.engr.uky.edu/template-based-programming">Template Based Programming</a>
+              </li>
+                          <li class="nav-item">
+            <a class="nav-link " href="https://silverstein.engr.uky.edu/who-wants-be-engineer">Who Wants to be an Engineer?</a>
+              </li>
+  
+      </ul>
+
+      <div class="d-lg-none">
+                    <ul class="navbar-nav navbar-mainmenu">
+                                <li class="nav-item dropdown">
+                <a class="nav-link " data-bs-toggle="dropdown" role="button" href="#" aria-expanded="false">Courses</a>
+        <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item " href="https://silverstein.engr.uky.edu/courses/cme-006">CME 006</a></li>
+                                    <li><a class="dropdown-item " href="https://silverstein.engr.uky.edu/courses/cme-101">CME 101</a></li>
+                                    <li><a class="dropdown-item " href="https://silverstein.engr.uky.edu/courses/cme-199">CME 199</a></li>
+                                    <li><a class="dropdown-item " href="https://silverstein.engr.uky.edu/courses/cme-200">CME 200</a></li>
+                                    <li><a class="dropdown-item " href="https://silverstein.engr.uky.edu/courses/cme-320">CME 320</a></li>
+                                    <li><a class="dropdown-item " href="https://silverstein.engr.uky.edu/courses/cme-415">CME 415</a></li>
+                                    <li><a class="dropdown-item " href="https://silverstein.engr.uky.edu/courses/cme-420">CME 420</a></li>
+                                    <li><a class="dropdown-item " href="https://silverstein.engr.uky.edu/courses/cme-425">CME 425</a></li>
+                                    <li><a class="dropdown-item " href="https://silverstein.engr.uky.edu/courses/cme-432">CME 432</a></li>
+                                    <li><a class="dropdown-item " href="https://silverstein.engr.uky.edu/courses/cme-455">CME 455</a></li>
+                                    <li><a class="dropdown-item " href="https://silverstein.engr.uky.edu/courses/cme-456">CME 456</a></li>
+                                    <li><a class="dropdown-item " href="https://silverstein.engr.uky.edu/courses/cme-462">CME 462</a></li>
+                                    <li><a class="dropdown-item " href="https://silverstein.engr.uky.edu/courses/cme-470">CME 470</a></li>
+                                    <li><a class="dropdown-item " href="https://silverstein.engr.uky.edu/courses/cme-550">CME 550</a></li>
+                                    <li><a class="dropdown-item " href="https://silverstein.engr.uky.edu/courses/cme-599">CME 599</a></li>
+                    </ul>
+        </li>
+                          <li class="nav-item">
+            <a class="nav-link  active" href="https://silverstein.engr.uky.edu/apex" aria-current="&quot;page&quot;">APEx</a>
+              </li>
+                          <li class="nav-item">
+            <a class="nav-link " href="https://silverstein.engr.uky.edu/template-based-programming">Template Based Programming</a>
+              </li>
+                          <li class="nav-item">
+            <a class="nav-link " href="https://silverstein.engr.uky.edu/who-wants-be-engineer">Who Wants to be an Engineer?</a>
+              </li>
+  
+      </ul>
+
+      <hr>
+
+            <ul class="nav mobile-menu-top-left justify-content-center">
+                                  <li class="nav-item">
+            <a class="nav-link ukcoe" href="https://www.engr.uky.edu/" target="_blank" rel="noopener">University of Kentucky College of Engineering <span class="visually-hidden">(opens in a new tab)</span></a>
+              </li>
+  
+      </ul>
+
+            <ul class="nav mobile-menu-top-right justify-content-center">
+                                  <li class="nav-item">
+            <a class="nav-link " href="https://www.engr.uky.edu/programs">Programs</a>
+              </li>
+                          <li class="nav-item">
+            <a class="nav-link " href="https://www.engr.uky.edu/directory">Directory</a>
+              </li>
+                          <li class="nav-item">
+            <a class="nav-link " href="https://www.engr.uky.edu/alumni">Alumni</a>
+              </li>
+                          <li class="nav-item">
+            <a class="nav-link myuk" href="https://myuk.uky.edu/" target="_blank" rel="noopener">myUK <span class="visually-hidden">(opens in a new tab)</span></a>
+              </li>
+  
+      </ul>
+
+      
+    </div>
+  </div>    
+</div></nav>
+
+  <main>
+            
+
+
+  <div class="paragraph paragraph--type--masthead paragraph--view-mode--featured-text">
+                  <div class="breadcrumb-reg ">
+          <nav aria-label="breadcrumb" class="">
+    <h2 class="visually-hidden">Breadcrumb</h2>
+    <ol class="breadcrumb">
+              <li class="breadcrumb-item ">
+                      <a class="breadcrumb-link" href="https://silverstein.engr.uky.edu/">Home</a>
+                  </li>
+              <li class="breadcrumb-item active">
+                      APEx: Analysis of Processes With Excel
+                  </li>
+          </ol>
+  </nav>
+
+      </div>
+            <div class="container-fluid g-0 mb-3 mb-lg-5 featured-text-hero">
+        <div class="row g-0">
+          <div class="featured-text-hero-wrapper">
+            <div class="offset-1 offset-md-2 col-10 col-md-8">
+              <h1 class="page-title">APEx: Analysis of Processes with Excel</h1>
+              
+            </div>
+          </div>
+        </div>
+      </div>
+        </div>
+
+        
+        <header class="page__header">
+      <div class="container">
+        <div data-drupal-messages-fallback="" class="hidden"></div>
+
+
+      </div>
+    </header>
+    
+    <a id="main-content" tabindex="-1"></a>
+    
+                
+  <div class="block block--engrlab-content">
+
+  
+    
+
+      <article class="node page page--full">
+  
+  
+
+      
+    
+              
+    <div class="paragraph paragraph--type--text py- paragraph--view-mode--container">
+            <div class="container">
+      <div class="row">
+        <div class="col">
+          
+
+                        <p>An Excel Add-In to integrate the tabular data
+ found in Felder, Rousseau, and Bullard's Elementary Principles of 
+Chemical Processes and to assist students in learning to solve systems 
+of algebraic equations using Excel's Solver tool.</p>
+
+        
+                <span class="file file--mime-application-pdf file--application-pdf"><a href="https://silverstein.engr.uky.edu/sites/silverstein/files/2024-05/Analyzing%20Processes%20with%20Excel%20%28APEx%29%20Documentation.pdf" type="application/pdf">Analyzing Processes with Excel (APEx) Documentation.pdf</a></span>
+  <span>(999.15 KB)</span>
+
+          
+<p><strong>(READ DOCUMENTATION BEFORE ATTEMPTING TO USE THE ADD-IN)</strong></p><p><strong>Recommended for Windows Office 2019, Office 365 for Mac and Windows, 32-bit and 64-bit versions.</strong><br><a href="https://github.com/DLSilverstein/APEx/releases/download/v1.17/APEx.xlam">APEx Excel Add-in 1.17</a> (<strong>RIGHT
+ CLICK AND SELECT "SAVE LINK AS..." or "SAVE TARGET AS... ." DO NOT OPEN
+ IN EXCEL, RECOMMENDED TO BE INSTALLED BEFORE USE-- DO NOT DOUBLE-CLICK 
+AFTER DOWNLOAD. SEE DOCUMENTATION. )</strong></p><p><strong>Is APEx not loading when you restart Excel after installation?</strong>
+ Recent updates to Microsoft Office require that you make the APEx.xlam 
+file a trusted file. To fix this, open Windows Explorer (WindowsKey+E), 
+navigate to the folder where APEx.xlam is located, and right click on 
+the APEx.xlam file. Select Properties. At the bottom of the General tab 
+there may be a Security section that states "This file came from another
+ computer and might be blocked to help protect this computer." Select 
+Unblock. Restart Excel, and APEx should load.</p><p>If APEx still does 
+not load after a restart we can make the folder a trusted location. In 
+Excel, go to the File tab, then select Options. Now select Trust Center 
+from the sidebar. Click the <strong>Trust Center Settings </strong>button, then select <strong>Trusted Locations </strong>from the sidebar. If you have placed APEx.xlam anyplace but one of the list locations, click <strong>Add new location</strong>. Click <strong>Browse </strong>and navigate to the location where APEx.xlam is saved. Click <strong>OK</strong> four times to exit and restart Excel. If APEx is installed, it should now load.</p><p><a href="https://github.com/DLSilverstein/APEx/releases/download/v1.17/APEx.Tutorial.Workbook.xlsx">APEx Excel Tutorial Workbook</a> (open only after installing APEx or functions will return errors)</p>
+            
+        </div>
+      </div>
+    </div>
+          </div>
+  
+          
+    <div class="paragraph paragraph--type--text py- paragraph--view-mode--container">
+            <div class="container">
+      <div class="row">
+        <div class="col">
+          
+
+                        <h3>Installation Screencast</h3>
+
+            
+        </div>
+      </div>
+    </div>
+          </div>
+  
+          
+
+    <div class="paragraph paragraph--type--video py- paragraph--view-mode--container">
+          <div class="container">
+      <div class="ratio ratio-16x9">
+      
+
+                        
+
+        
+                <div class="ratio ratio-16x9">
+    <video controls="controls">
+            <source src="APEx_%20Analysis%20of%20Processes%20with%20Excel_files/Installing%20APEx.mp4" type="video/mp4">
+        </video>
+</div>
+
+          
+
+            
+      </div>
+    </div>
+    </div>
+  
+          
+    <div class="paragraph paragraph--type--text py-3 paragraph--view-mode--container">
+            <div class="container">
+      <div class="row">
+        <div class="col">
+          
+
+                        <p>Use the spacebar to pause the video as needed. Refer to the documentation for more detail.</p>
+
+            
+        </div>
+      </div>
+    </div>
+          </div>
+  
+          
+
+  <div class="paragraph paragraph--type--two-columns py- paragraph--view-mode--container">
+        <div class="container">
+          <div class="row">
+                                                                        
+                                                                        
+                                                                        
+                                                                        
+                                                                        
+                                                                        
+                                    <div class="col-md-4 mb-4">
+                                
+    <div class="paragraph paragraph--type--text py- paragraph--view-mode--default">
+        
+
+                        <p>Does APEx load when you install, then not 
+load when you restart Excel? Open the folder containing APEX.xlam in 
+File Explorer (press &lt;Windows&gt;-e) and navigate to the Download 
+folder or other location where the file is stored. Right click on the 
+file. The dialog displayed should look something like the image to the 
+right:</p><p>On managed systems (like those in a computer lab or classroom) you may not have the option to unblock. For this case, follow <a href="https://silverstein.engr.uky.edu/node/106">these instructions</a>&nbsp;provided by Dr. Leah Granger of NC State University.</p><p>David L. Silverstein, Ph.D., P.E.<br>University of Kentucky<br><a href="mailto:apexsupport@outlook.com">APExSupport@outlook.com</a></p><p>(270) 534-3132</p><p>Last
+ updated May 2024. Updated to 1.17 to address deprecated modes of 
+creating toolbar entries. Updated to 1.16 to fix parsing issue where 
+some variables were not converted correctly to the correct cell 
+reference. Updated to 1.15 to fix issues with superheated steam table 
+lookups for U and H specifying T and V. Updated fixes for APEx not 
+loading after restart. Updated compatibility with 64-bit editions of 
+Office. Updated to version 1.13 (Fixes for steam tables at high 
+temperatures, some interpolations with U,H,V as input).</p>
+            
+      </div>
+  
+                </div>
+                                                                          <div class="col-md-4 mb-4">
+                                
+
+
+            
+  
+    
+    <div class="paragraph paragraph--type--image py- paragraph--view-mode--default">
+            <picture>
+            
+<img class="mx-auto d-block img-fluid" src="APEx_%20Analysis%20of%20Processes%20with%20Excel_files/APEX_ONL.PNG.webp" alt="fds">
+
+  </picture>
+
+              </div>
+  
+                </div>
+                                                                                                      </div>
+    </div>
+  </div>
+
+          
+        
+      </article>
+
+  
+  </div>
+
+
+      
+    
+  </main>
+  
+  <footer class="page__footer mt-5 py-5">
+    <div class="container">
+      <div class="row">
+        <div class="col-lg-8">
+          
+  <div class="block--type-basic block block--basic block--footer">
+
+  
+    
+
+      
+
+                        <div class="row">
+<div class="col-12">
+<p class="h2"><a href="https://silverstein.engr.uky.edu/">Prof. David L. Silverstein</a></p>
+</div>
+
+<div class="col-md-6">
+<p><strong>Address</strong></p>
+
+<p>209 Crounse Hall<br>
+4810 Alben Barkley Dr<br>
+Paducah, KY 42001</p>
+
+<p><strong><a href="https://www.google.com/maps/place/West+Kentucky+Community+%26+Technical+College:+Main+Campus/@37.0521078,-88.6705336,994m/data=!3m1!1e3!4m15!1m8!3m7!1s0x887a1b7b01b6e03b:0x324b9ca9db4713e5!2s4810+Alben+Barkley+Dr,+Paducah,+KY+42001!3b1!8m2!3d37.0521078!4d-88.6705336!16s%2Fg%2F11sb634_wy!3m5!1s0x887a1a41213535d3:0xff22efea53818dd0!8m2!3d37.0521733!4d-88.670307!16zL20vMGQ0eWd2" target="_blank">Get Directions</a></strong></p>
+</div>
+
+<div class="col-md-6">
+<p><strong>Contact</strong></p>
+
+<p><a class="ico-phone href=" tel:2705343132="">(270)534-3132</a><br>
+<a class="ico-email" href="mailto:david.silverstein@uky.edu">david.silverstein@uky.edu</a></p>
+</div>
+</div>
+
+            
+  
+  </div>
+
+
+        </div>
+        <div class="col-lg-4">
+                    <ul class="nav flex-column footer-uk-menu">
+                                    <li class="nav-item">
+            <a class="nav-link mainuk" href="https://www.uky.edu/" target="_blank" rel="noopener">University of Kentucky <span class="visually-hidden">(opens in a new tab)</span></a>
+              </li>
+                          <li class="nav-item">
+            <a class="nav-link " href="http://www.uky.edu/hr/employment/uk-is-equal-opportunity-employer">An Equal Opportunity Employer</a>
+              </li>
+                          <li class="nav-item">
+            <a class="nav-link " href="http://www.uky.edu/accreditation/">Accreditation</a>
+              </li>
+                          <li class="nav-item">
+            <a class="nav-link " href="https://directory.uky.edu/">UK Directory</a>
+              </li>
+                          <li class="nav-item">
+            <a class="nav-link " href="https://www.uky.edu/see/privacy">Privacy Policy</a>
+              </li>
+                          <li class="nav-item">
+            <a class="nav-link " href="https://www.uky.edu/see/web-accessibility">Accessibility</a>
+              </li>
+  
+          </ul>
+        </div>
+      </div>
+    </div>
+  </footer>  
+  
+</div>
+
+  </div>
+
+    
+    <script type="application/json" data-drupal-selector="drupal-settings-json">{"path":{"baseUrl":"\/","pathPrefix":"","currentPath":"node\/16","currentPathIsAdmin":false,"isFront":false,"currentLanguage":"en","themeUrl":"themes\/custom\/engrlab"},"pluralDelimiter":"\u0003","suppressDeprecationErrors":true,"user":{"uid":0,"permissionsHash":"94ecfa1e51ac0957270e81202412731b6b2a84da7798f7770561e29be0b99a47"}}</script>
+<script src="APEx_%20Analysis%20of%20Processes%20with%20Excel_files/js_GcSMfo6p4rIvG1DkcTr5XJ3O5_eRxppYYCI4__JuFw4.js"></script>
+
+      
+
+</body></html>
