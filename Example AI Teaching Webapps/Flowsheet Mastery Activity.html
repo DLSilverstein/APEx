@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, minimum-scale=1.0">
+    <title>FlowSheet Master - LMS Edition</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React and ReactDOM CDNs -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <!-- Babel CDN for inline JSX translation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Custom Tailwind Configuration for smooth styling -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            950: '#020617',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Optimize scrolling and ensure iframe resists collapsing in Blackboard */
+        html, body {
+            overflow-x: hidden;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            /* Explicitly set min-height at html level so Blackboard cannot squash the layout */
+            min-height: 700px;
+        }
+        /* Smooth scrolling and styling custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+        /* Touch safety adjustments */
+        select, input, button {
+            touch-action: manipulation;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 flex flex-col antialiased">
+
+    <!-- Target Div for React Mount -->
+    <div id="root" class="w-full flex-1 flex flex-col min-h-[700px]"></div>
+
+    <!-- React Code Base compiled in real-time by Babel -->
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // Custom Inline SVG Icons to prevent restrictive LMS environment dependency errors
+        const BookOpenIcon = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" class="lucide lucide-book-open"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        );
+        const HelpCircleIcon = ({ className }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" class={`lucide lucide-help-circle ${className}`}><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        );
+        const CheckCircle2Icon = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" class="lucide lucide-check-circle-2"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg>
+        );
+        const XCircleIcon = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" class="lucide lucide-x-circle"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        );
+        const RefreshCwIcon = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" class="lucide lucide-refresh-cw"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
+        );
+        const AwardIcon = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" class="lucide lucide-award text-yellow-400 animate-pulse"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
+        );
+        const InfoIcon = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" class="lucide lucide-info text-indigo-400 shrink-0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        );
+        const ArrowRightIcon = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" class="lucide lucide-arrow-right"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        );
+        const CheckIcon = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" class="lucide lucide-check"><polyline points="20 6 9 17 4 12"/></svg>
+        );
+        const LayersIcon = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" class="lucide lucide-layers"><polyline points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+        );
+        const FileTextIcon = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" class="lucide lucide-file-text"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+        );
+        const TrendingUpIcon = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" class="lucide lucide-trending-up"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+        );
+        const SlidersIcon = ({ className }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" class={`lucide lucide-sliders ${className}`}><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="2" y1="14" x2="6" y2="14"/><line x1="10" y1="8" x2="14" y2="8"/><line x1="18" y1="16" x2="22" y2="16"/></svg>
+        );
+        const SettingsIcon = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" class="lucide lucide-settings"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+        );
+
+        // PROCESS SCENARIOS DATA
+        const SCENARIOS = [
+            {
+                id: 'mixer',
+                title: 'Level 1: The Ethanol Dilution Mixer',
+                difficulty: 'Easy',
+                equipment: 'Mixer',
+                description: 'A stream containing 20.0 wt% ethanol (EtOH) in water is mixed with a pure liquid ethanol stream to produce a mixture containing 60.0 wt% ethanol. The feed rate of the dilute ethanol stream is 150 kg/h. Label the process flowchart completely using mass flow rates and mass fractions.',
+                instruction: 'Toggle streams to practice either Overall & Composition values or Component flow rates. Both methods are valid!',
+                solutionExplanation: 'For a complete label: \n1. Feed 1: Total flow is 150 kg/h with 0.20 EtOH and 0.80 H2O. Under Component Flow mode, this equates to exactly 30 kg EtOH/h and 120 kg H2O/h.\n2. Feed 2: Pure ethanol contains 1.00 wt% EtOH with unknown flowrate m2 [kg/h] or m2 [kg EtOH/h].\n3. Product: Contains 0.60 wt% EtOH and 0.40 wt% H2O with overall flowrate m3 [kg/h]. In Component flows, this is labeled as 0.60 * m3 and 0.40 * m3 respectively.',
+                streams: {
+                    feed1: {
+                        name: 'Dilute Feed Stream (Feed 1)',
+                        fields: {
+                            flowrate: { label: 'Flowrate', type: 'value', value: '150 kg/h', options: ['150 kg/h', 'm1 [kg/h]', 'Unknown', '0.20 kg/h'] },
+                            comp1: { label: 'Ethanol Fraction', type: 'value', value: '0.20 kg EtOH/kg', options: ['0.20 kg EtOH/kg', '20 kg EtOH', 'x1 [kg EtOH/kg]', '0.80 kg EtOH/kg'] },
+                            comp2: { label: 'Water Fraction', type: 'value', value: '0.80 kg H2O/kg', options: ['0.80 kg H2O/kg', 'x_w [kg H2O/kg]', '0.20 kg H2O/kg', '0.50 kg H2O/kg'] }
+                        },
+                        componentFields: {
+                            comp_flow1: { label: 'Ethanol Flow', type: 'value', value: '30 kg EtOH/h', options: ['30 kg EtOH/h', '150 kg/h', '0.20 kg/h', 'm_EtOH1 [kg/h]'] },
+                            comp_flow2: { label: 'Water Flow', type: 'value', value: '120 kg H2O/h', options: ['120 kg H2O/h', '80 kg/h', 'm_H2O1 [kg/h]', '0.80 kg/h'] }
+                        }
+                    },
+                    feed2: {
+                        name: 'Pure Ethanol Stream (Feed 2)',
+                        fields: {
+                            flowrate: { label: 'Flowrate', type: 'variable', value: 'm2 [kg/h]', options: ['m2 [kg/h]', '100 kg/h', 'F2 [mol/h]', 'm1 [kg/h]'] },
+                            comp1: { label: 'Ethanol Fraction', type: 'value', value: '1.00 kg EtOH/kg', options: ['1.00 kg EtOH/kg', 'x2 [kg EtOH/kg]', '0.00 kg EtOH/kg', '0.50 kg EtOH/kg'] }
+                        },
+                        componentFields: {
+                            comp_flow1: { label: 'Ethanol Flow', type: 'variable', value: 'm2 [kg EtOH/h]', options: ['m2 [kg EtOH/h]', '100 kg/h', 'm1 [kg/h]', 'm_EtOH2 [kg/h]'] },
+                            comp_flow2: { label: 'Water Flow', type: 'value', value: '0 kg H2O/h', options: ['0 kg H2O/h', 'm_H2O2 [kg/h]', '1.00 kg H2O/kg', 'Unknown'] }
+                        }
+                    },
+                    product: {
+                        name: 'Product Stream',
+                        fields: {
+                            flowrate: { label: 'Flowrate', type: 'variable', value: 'm3 [kg/h]', options: ['m3 [kg/h]', 'm2 [kg/h]', '150 kg/h', 'F3 [mol/h]'] },
+                            comp1: { label: 'Ethanol Fraction', type: 'value', value: '0.60 kg EtOH/kg', options: ['0.60 kg EtOH/kg', 'x3 [kg EtOH/kg]', '0.40 kg EtOH/kg', '0.20 kg EtOH/kg'] },
+                            comp2: { label: 'Water Fraction', type: 'value', value: '0.40 kg H2O/kg', options: ['0.40 kg H2O/kg', '0.60 kg H2O/kg', '1 - x3', '0.50 kg H2O/kg'] }
+                        },
+                        componentFields: {
+                            comp_flow1: { label: 'Ethanol Flow', type: 'variable', value: '0.60 * m3 [kg EtOH/h]', options: ['0.60 * m3 [kg EtOH/h]', 'm_EtOH3 [kg/h]', '60 kg EtOH/h', 'm3 [kg/h]'] },
+                            comp_flow2: { label: 'Water Flow', type: 'variable', value: '0.40 * m3 [kg H2O/h]', options: ['0.40 * m3 [kg H2O/h]', 'm_H2O3 [kg/h]', '40 kg H2O/h', '120 kg H2O/h'] }
+                        }
+                    }
+                },
+                dof: {
+                    unknowns: 2,
+                    balances: 2,
+                    relations: 0,
+                    answer: 0,
+                    explanation: 'Whether you label via total flows (m2, m3) or component flows (m2_EtOH, m3_EtOH, m3_H2O), the degree of freedom remains identical!\nNumber of Unknown Variables = 2 (e.g. m2, m3).\nNumber of Independent Material Balances = 2 (Ethanol, Water).\nDoF = 2 - 2 = 0. Since DoF = 0, the problem is solvable!'
+                }
+            },
+            {
+                id: 'distillation',
+                title: 'Level 2: Benzene/Toluene Distillation',
+                difficulty: 'Medium',
+                equipment: 'Distillation Column',
+                description: 'A liquid mixture containing 30.0 mole% benzene (B), 40.0% toluene (T), and 30.0% xylene (X) is fed to a distillation column. The overhead product stream contains 95.0 mole% benzene and no xylene. The bottom product contains all the feed xylene and has a toluene mole fraction of 0.55. Label the flowchart completely.',
+                instruction: 'Switch any stream to Component Flow mode. Note that component flowrates incorporate fractions dynamically (e.g. 0.30 * n1 [mol B/h]).',
+                solutionExplanation: 'For a complete distillation column label:\n1. Feed Stream: n1 [mol/h] total flow with 0.30 Benzene, 0.40 Toluene, 0.30 Xylene, or equivalent component flows:\n   • Benzene: 0.30 * n1 [mol B/h]\n   • Toluene: 0.40 * n1 [mol T/h]\n   • Xylene: 0.30 * n1 [mol X/h].\n2. Bottoms Xylene Split: Since bottoms contains all feed xylene, the bottom xylene component flowrate can be labeled directly as 0.30 * n1 [mol X/h], reducing unknowns!',
+                streams: {
+                    feed: {
+                        name: 'Feed Stream',
+                        fields: {
+                            flowrate: { label: 'Flowrate', type: 'variable', value: 'n1 [mol/h]', options: ['n1 [mol/h]', '100 mol/h', 'm1 [kg/h]', 'F_feed'] },
+                            comp1: { label: 'Benzene Fraction', type: 'value', value: '0.30 mol B/mol', options: ['0.30 mol B/mol', 'x_B1', '30.0%', '0.40 mol B/mol'] },
+                            comp2: { label: 'Toluene Fraction', type: 'value', value: '0.40 mol T/mol', options: ['0.40 mol T/mol', 'x_T1', '0.30 mol T/mol', '0.50 mol T/mol'] },
+                            comp3: { label: 'Xylene Fraction', type: 'value', value: '0.30 mol X/mol', options: ['0.30 mol X/mol', 'x_X1', '0.40 mol X/mol', '0.20 mol X/mol'] }
+                        },
+                        componentFields: {
+                            comp_flow1: { label: 'Benzene Flow', type: 'variable', value: '0.30 * n1 [mol B/h]', options: ['0.30 * n1 [mol B/h]', 'n_B1 [mol/h]', '30 mol B/h', '0.30 mol B/mol'] },
+                            comp_flow2: { label: 'Toluene Flow', type: 'variable', value: '0.40 * n1 [mol T/h]', options: ['0.40 * n1 [mol T/h]', 'n_T1 [mol/h]', '40 mol T/h', '0.40 mol T/mol'] },
+                            comp_flow3: { label: 'Xylene Flow', type: 'variable', value: '0.30 * n1 [mol X/h]', options: ['0.30 * n1 [mol X/h]', 'n_X1 [mol/h]', '30 mol X/h', '0.30 mol X/mol'] }
+                        }
+                    },
+                    overhead: {
+                        name: 'Overhead Product',
+                        fields: {
+                            flowrate: { label: 'Flowrate', type: 'variable', value: 'n2 [mol/h]', options: ['n2 [mol/h]', 'n1 [mol/h]', 'D [kg/h]', 'Unknown'] },
+                            comp1: { label: 'Benzene Fraction', type: 'value', value: '0.95 mol B/mol', options: ['0.95 mol B/mol', 'y_B2', '0.05 mol B/mol', '1.00 mol B/mol'] },
+                            comp2: { label: 'Toluene Fraction', type: 'value', value: '0.05 mol T/mol', options: ['0.05 mol T/mol', '0.95 mol T/mol', 'y_T2', '0.00 mol T/mol'] },
+                            comp3: { label: 'Xylene Fraction', type: 'value', value: '0.00 mol X/mol', options: ['0.00 mol X/mol', 'y_X2', '0.05 mol X/mol', 'Trace'] }
+                        },
+                        componentFields: {
+                            comp_flow1: { label: 'Benzene Flow', type: 'variable', value: '0.95 * n2 [mol B/h]', options: ['0.95 * n2 [mol B/h]', 'n_B2 [mol/h]', '0.95 mol B/h', 'n2 [mol/h]'] },
+                            comp_flow2: { label: 'Toluene Flow', type: 'variable', value: '0.05 * n2 [mol T/h]', options: ['0.05 * n2 [mol T/h]', 'n_T2 [mol/h]', '0.05 mol T/h', '0.00 mol T/h'] },
+                            comp_flow3: { label: 'Xylene Flow', type: 'value', value: '0.00 mol X/h', options: ['0.00 mol X/h', 'n_X2 [mol/h]', 'Trace', '0.05 mol X/h'] }
+                        }
+                    },
+                    bottoms: {
+                        name: 'Bottom Product',
+                        fields: {
+                            flowrate: { label: 'Flowrate', type: 'variable', value: 'n3 [mol/h]', options: ['n3 [mol/h]', 'W [kg/h]', 'n1 - n2', 'Unknown'] },
+                            comp1: { label: 'Toluene Fraction', type: 'value', value: '0.55 mol T/mol', options: ['0.55 mol T/mol', 'x_T3', '0.45 mol T/mol', '0.50 mol T/mol'] },
+                            comp2: { label: 'Benzene Fraction', type: 'variable', value: 'xB3 [mol B/mol]', options: ['xB3 [mol B/mol]', '0.45 mol B/mol', '0.30 mol B/mol', '0.15 mol B/mol'] },
+                            comp3: { label: 'Xylene Fraction', type: 'variable', value: '(0.45 - xB3) [mol X/mol]', options: ['(0.45 - xB3) [mol X/mol]', 'xX3 [mol X/mol]', '0.30 mol X/mol', '1 - xB3'] }
+                        },
+                        componentFields: {
+                            comp_flow1: { label: 'Toluene Flow', type: 'variable', value: '0.55 * n3 [mol T/h]', options: ['0.55 * n3 [mol T/h]', 'n_T3 [mol/h]', '0.55 mol T/h', '0.45 * n3 [mol T/h]'] },
+                            comp_flow2: { label: 'Benzene Flow', type: 'variable', value: 'n_B3 [mol B/h]', options: ['n_B3 [mol B/h]', '0.45 * n3 [mol B/h]', 'xB3 * n3 [mol/h]', 'n3 [mol/h]'] },
+                            comp_flow3: { label: 'Xylene Flow', type: 'variable', value: '0.30 * n1 [mol X/h]', options: ['0.30 * n1 [mol X/h]', 'n_X3 [mol/h]', '0.30 * n3 [mol X/h]', '30 mol X/h'] }
+                        }
+                    }
+                },
+                dof: {
+                    unknowns: 5,
+                    balances: 3,
+                    relations: 1,
+                    answer: 1,
+                    explanation: 'Let us count:\n• Total independent unknowns is 5 (such as n1, n2, n3, bottoms composition x_B3, x_X3).\n• System contains 3 species balances. Split relation leaves DoF = 1. A basis must be selected!'
+                }
+            },
+            {
+                id: 'reactor_recycle',
+                title: 'Level 3: Methanol Reactor with Recycle & Purge',
+                difficulty: 'Hard',
+                equipment: 'Reactor System',
+                description: 'A feed stream of fresh synthesis gas containing 32.0 mol% CO, 64.0 mol% H2, and 4.0 mol% N2 (inert) is mixed with a recycle stream and sent to a methanol reactor. Label the system completely using molar flows.',
+                instruction: 'Toggle between modes. Notice how component flows represent unreacted recycled reactants explicitly.',
+                solutionExplanation: 'Key concepts for Recycle & Purge systems in Component Flow rates:\n1. Splitter Rule: Because the purge stream and recycle stream split from the exact same process line, they have identical concentration fractions. In component flows, we express this as: CO purge = yCO3 * n_p, while CO recycle = yCO3 * n_r.',
+                streams: {
+                    fresh_feed: {
+                        name: 'Fresh Feed',
+                        fields: {
+                            flowrate: { label: 'Flowrate', type: 'variable', value: 'n0 [mol/h]', options: ['n0 [mol/h]', '100 mol/h', 'F0 [kg/h]', 'n_fresh'] },
+                            comp1: { label: 'CO Fraction', type: 'value', value: '0.32 mol CO/mol', options: ['0.32 mol CO/mol', 'y_CO0', '0.333 mol CO/mol', '32.0%'] },
+                            comp2: { label: 'H2 Fraction', type: 'value', value: '0.64 mol H2/mol', options: ['0.64 mol H2/mol', '0.667 mol H2/mol', 'y_H2', '0.04 mol H2/mol'] }
+                        },
+                        componentFields: {
+                            comp_flow1: { label: 'CO Flow', type: 'variable', value: '0.32 * n0 [mol CO/h]', options: ['0.32 * n0 [mol CO/h]', 'n_CO0 [mol/h]', '32 mol CO/h', '0.32 mol CO/mol'] },
+                            comp_flow2: { label: 'H2 Flow', type: 'variable', value: '0.64 * n0 [mol H2/h]', options: ['0.64 * n0 [mol H2/h]', 'n_H20 [mol/h]', '64 mol H2/h', '0.64 mol H2/mol'] },
+                            comp_flow3: { label: 'N2 Flow', type: 'variable', value: '0.04 * n0 [mol N2/h]', options: ['0.04 * n0 [mol N2/h]', 'n_N20 [mol/h]', '4 mol N2/h', '0.04 mol N2/mol'] }
+                        }
+                    },
+                    reactor_feed: {
+                        name: 'Combined Reactor Feed',
+                        fields: {
+                            flowrate: { label: 'Flowrate', type: 'variable', value: 'n1 [mol/h]', options: ['n1 [mol/h]', 'n0 + n_recycle', 'F1 [kg/h]', 'Unknown'] },
+                            comp1: { label: 'CO Fraction', type: 'variable', value: 'yCO1 [mol CO/mol]', options: ['yCO1 [mol CO/mol]', '0.32 mol CO/mol', 'y_CO_rec', 'Unknown'] }
+                        },
+                        componentFields: {
+                            comp_flow1: { label: 'CO Flow', type: 'variable', value: 'n_CO1 [mol CO/h]', options: ['n_CO1 [mol CO/h]', 'yCO1 * n1 [mol/h]', '0.32 * n1 [mol CO/h]', 'Unknown'] },
+                            comp_flow2: { label: 'H2 Flow', type: 'variable', value: 'n_H21 [mol H2/h]', options: ['n_H21 [mol H2/h]', '0.64 * n1 [mol H2/h]', 'yH21 * n1 [mol/h]', 'n_H2_fresh [mol/h]'] },
+                            comp_flow3: { label: 'N2 Flow', type: 'variable', value: 'n_N21 [mol N2/h]', options: ['n_N21 [mol N2/h]', '0.04 * n1 [mol N2/h]', 'yN21 * n1 [mol/h]', 'n_N2_fresh [mol/h]'] }
+                        }
+                    },
+                    liquid_product: {
+                        name: 'Liquid Product',
+                        fields: {
+                            flowrate: { label: 'Flowrate', type: 'variable', value: 'n_MeOH [mol/h]', options: ['n_MeOH [mol/h]', 'n_prod [kg/h]', 'n3', 'Pure Methanol'] }
+                        },
+                        componentFields: {
+                            comp_flow1: { label: 'MeOH Flow', type: 'variable', value: 'n_MeOH [mol MeOH/h]', options: ['n_MeOH [mol MeOH/h]', 'n_prod [mol/h]', 'n_MeOH_prod [mol/h]', 'Pure Methanol'] }
+                        }
+                    },
+                    purge: {
+                        name: 'Purge Stream',
+                        fields: {
+                            flowrate: { label: 'Flowrate', type: 'variable', value: 'n_p [mol/h]', options: ['n_p [mol/h]', 'n_r [mol/h]', 'n_purge [kg/h]', 'n_split'] },
+                            comp1: { label: 'CO Fraction', type: 'variable', value: 'yCO3 [mol CO/mol]', options: ['yCO3 [mol CO/mol]', 'yCO_p', '0.32 mol CO/mol', 'yCO1'] }
+                        },
+                        componentFields: {
+                            comp_flow1: { label: 'CO Flow', type: 'variable', value: 'yCO3 * n_p [mol CO/h]', options: ['yCO3 * n_p [mol CO/h]', 'n_CO_p [mol/h]', '0.32 * n_p [mol CO/h]', 'yCO1 * n_p [mol CO/h]'] },
+                            comp_flow2: { label: 'H2 Flow', type: 'variable', value: 'yH23 * n_p [mol H2/h]', options: ['yH23 * n_p [mol H2/h]', 'n_H2_p [mol/h]', '0.64 * n_p [mol H2/h]', 'yH21 * n_p [mol H2/h]'] },
+                            comp_flow3: { label: 'N2 Flow', type: 'variable', value: 'yN23 * n_p [mol N2/h]', options: ['yN23 * n_p [mol N2/h]', 'n_N2_p [mol/h]', '0.04 * n_p [mol N2/h]', 'yN21 * n_p [mol N2/h]'] }
+                        }
+                    },
+                    recycle: {
+                        name: 'Recycle Stream',
+                        fields: {
+                            flowrate: { label: 'Flowrate', type: 'variable', value: 'n_r [mol/h]', options: ['n_r [mol/h]', 'n_p [mol/h]', 'n_recycle [kg/h]', 'n_split'] },
+                            comp1: { label: 'CO Fraction', type: 'variable', value: 'yCO3 [mol CO/mol]', options: ['yCO3 [mol CO/mol]', 'yCO_r', 'yCO1', '0.32 mol CO/mol'] }
+                        },
+                        componentFields: {
+                            comp_flow1: { label: 'CO Flow', type: 'variable', value: 'yCO3 * n_r [mol CO/h]', options: ['yCO3 * n_r [mol CO/h]', 'n_CO_r [mol/h]', '0.32 * n_r [mol CO/h]', 'yCO1 * n_r [mol CO/h]'] },
+                            comp_flow2: { label: 'H2 Flow', type: 'variable', value: 'yH23 * n_r [mol H2/h]', options: ['yH23 * n_r [mol H2/h]', 'n_H2_r [mol/h]', '0.64 * n_r [mol H2/h]', 'yH21 * n_r [mol H2/h]'] },
+                            comp_flow3: { label: 'N2 Flow', type: 'variable', value: 'yN23 * n_r [mol N2/h]', options: ['yN23 * n_r [mol N2/h]', 'n_N2_r [mol/h]', '0.04 * n_r [mol N2/h]', 'yN21 * n_r [mol N2/h]'] }
+                        }
+                    }
+                },
+                dof: {
+                    unknowns: 8,
+                    balances: 6,
+                    relations: 2,
+                    answer: 0,
+                    explanation: 'The structure of your balance calculations scales dynamically with the labeling mode, but target DoF remains 0. Splitting streams are always constrained to match parent compositions.'
+                }
+            }
+        ];
+
+        function App() {
+            const [activeTab, setActiveTab] = useState('tutorial');
+            const [scenarioIndex, setScenarioIndex] = useState(0);
+            const [userSelections, setUserSelections] = useState({});
+            const [streamModes, setStreamModes] = useState({}); // Stores mode for each stream: 'total' or 'component'
+            const [showResult, setShowResult] = useState(false);
+            const [quizScore, setQuizScore] = useState(0);
+            const [showDofQuiz, setShowDofQuiz] = useState(false);
+            const [userDofGuess, setUserDofGuess] = useState('');
+            const [dofChecked, setDofChecked] = useState(false);
+            const [sandboxStreams, setSandboxStreams] = useState([
+                { id: 'S1', type: 'Feed', flow: '100 kg/h', species: [{ name: 'A', frac: '0.40' }, { name: 'B', frac: '0.60' }] },
+                { id: 'S2', type: 'Product 1', flow: 'm2 [kg/h]', species: [{ name: 'A', frac: 'x2' }, { name: 'B', frac: '1 - x2' }] }
+            ]);
+            const [activeTutorialSlide, setActiveTutorialSlide] = useState(0);
+            const [showEmbedHelper, setShowEmbedHelper] = useState(false);
+
+            const containerRef = useRef(null);
+            const scenario = SCENARIOS[scenarioIndex];
+
+            // Reset workspace when switching challenges & set default modes to total
+            useEffect(() => {
+                setUserSelections({});
+                setShowResult(false);
+                setShowDofQuiz(false);
+                setUserDofGuess('');
+                setDofChecked(false);
+                
+                const defaultModes = {};
+                Object.keys(scenario.streams).forEach(streamId => {
+                    defaultModes[streamId] = 'total';
+                });
+                setStreamModes(defaultModes);
+            }, [scenarioIndex]);
+
+            // Automatically notify LMS iframe parents of dimensions if supported
+            useEffect(() => {
+                const sendHeightToLms = () => {
+                    if (window.parent && window.parent !== window) {
+                        const height = containerRef.current?.scrollHeight || document.documentElement.scrollHeight;
+                        window.parent.postMessage({ type: 'resize-iframe', height: height }, '*');
+                    }
+                };
+                
+                sendHeightToLms();
+                const resizeObserver = new ResizeObserver(() => sendHeightToLms());
+                if (containerRef.current) {
+                    resizeObserver.observe(containerRef.current);
+                }
+                return () => resizeObserver.disconnect();
+            }, [activeTab, scenarioIndex, showResult, showDofQuiz, dofChecked, sandboxStreams, streamModes]);
+
+            const handleSelectLabel = (streamId, fieldKey, mode, value) => {
+                setUserSelections(prev => ({
+                    ...prev,
+                    [`${streamId}_${fieldKey}_${mode}`]: value
+                }));
+            };
+
+            const toggleStreamMode = (streamId, mode) => {
+                setStreamModes(prev => ({
+                    ...prev,
+                    [streamId]: mode
+                }));
+            };
+
+            const checkLabels = () => {
+                let allCorrect = true;
+                Object.keys(scenario.streams).forEach(streamId => {
+                    const stream = scenario.streams[streamId];
+                    const activeMode = streamModes[streamId] || 'total';
+                    const targetFields = activeMode === 'component' ? stream.componentFields : stream.fields;
+                    
+                    if (targetFields) {
+                        Object.keys(targetFields).forEach(fieldKey => {
+                            const correctVal = targetFields[fieldKey].value;
+                            const userVal = userSelections[`${streamId}_${fieldKey}_${activeMode}`];
+                            if (userVal !== correctVal) {
+                                allCorrect = false;
+                            }
+                        });
+                    }
+                });
+
+                setShowResult(true);
+                if (allCorrect) {
+                    setQuizScore(prev => prev + 10);
+                    setShowDofQuiz(true);
+                }
+            };
+
+            const checkDof = () => {
+                setDofChecked(true);
+            };
+
+            const handleNextLevel = () => {
+                if (scenarioIndex < SCENARIOS.length - 1) {
+                    setScenarioIndex(prev => prev + 1);
+                } else {
+                    setActiveTab('sandbox');
+                }
+            };
+
+            const addSandboxStream = () => {
+                const nextId = `S${sandboxStreams.length + 1}`;
+                setSandboxStreams(prev => [
+                    ...prev,
+                    { id: nextId, type: 'Intermediate', flow: '?', species: [{ name: 'A', frac: '?' }] }
+                ]);
+            };
+
+            const updateSandboxStream = (index, key, value) => {
+                setSandboxStreams(prev => {
+                    const updated = [...prev];
+                    updated[index][key] = value;
+                    return updated;
+                });
+            };
+
+            const updateSandboxSpecies = (streamIndex, specIndex, key, value) => {
+                setSandboxStreams(prev => {
+                    const updated = [...prev];
+                    const stream = { ...updated[streamIndex] };
+                    const species = [...stream.species];
+                    species[specIndex] = { ...species[specIndex], [key]: value };
+                    stream.species = species;
+                    updated[streamIndex] = stream;
+                    return updated;
+                });
+            };
+
+            const addSandboxSpecies = (streamIndex) => {
+                setSandboxStreams(prev => {
+                    const updated = [...prev];
+                    const stream = { ...updated[streamIndex] };
+                    stream.species = [...stream.species, { name: 'New Component', frac: '0.00' }];
+                    updated[streamIndex] = stream;
+                    return updated;
+                });
+            };
+
+            const isFieldCorrect = (streamId, fieldKey, mode) => {
+                const targetFields = mode === 'component' ? scenario.streams[streamId].componentFields : scenario.streams[streamId].fields;
+                if (!targetFields || !targetFields[fieldKey]) return false;
+                return userSelections[`${streamId}_${fieldKey}_${mode}`] === targetFields[fieldKey].value;
+            };
+
+            const getAccuracyRate = () => {
+                let totalFields = 0;
+                let correctFields = 0;
+                Object.keys(scenario.streams).forEach(streamId => {
+                    const stream = scenario.streams[streamId];
+                    const activeMode = streamModes[streamId] || 'total';
+                    const targetFields = activeMode === 'component' ? stream.componentFields : stream.fields;
+                    
+                    if (targetFields) {
+                        Object.keys(targetFields).forEach(fieldKey => {
+                            totalFields++;
+                            if (userSelections[`${streamId}_${fieldKey}_${activeMode}`] === targetFields[fieldKey].value) {
+                                correctFields++;
+                            }
+                        });
+                    }
+                });
+                return totalFields > 0 ? Math.round((correctFields / totalFields) * 100) : 0;
+            };
+
+            const allSelected = () => {
+                let totalFields = 0;
+                let answeredFields = 0;
+                Object.keys(scenario.streams).forEach(streamId => {
+                    const stream = scenario.streams[streamId];
+                    const activeMode = streamModes[streamId] || 'total';
+                    const targetFields = activeMode === 'component' ? stream.componentFields : stream.fields;
+                    
+                    if (targetFields) {
+                        Object.keys(targetFields).forEach(fieldKey => {
+                            totalFields++;
+                            if (userSelections[`${streamId}_${fieldKey}_${activeMode}`]) {
+                                answeredFields++;
+                            }
+                        });
+                    }
+                });
+                return totalFields === answeredFields && totalFields > 0;
+            };
+
+            // Custom Stream Renderer helper to build dynamic selector fields and toggle pills
+            const renderStreamOverlay = (streamId, titleText) => {
+                const activeMode = streamModes[streamId] || 'total';
+                const hasComponentFlow = !!scenario.streams[streamId].componentFields;
+                const fieldsToRender = activeMode === 'component' ? scenario.streams[streamId].componentFields : scenario.streams[streamId].fields;
+
+                return (
+                    <div className="bg-slate-950/90 border border-slate-800 p-2.5 rounded-xl space-y-1.5 shadow-md w-60">
+                        {/* Header & Toggle Section */}
+                        <div className="flex flex-col space-y-1 border-b border-slate-800/80 pb-1.5">
+                            <div className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">{titleText}</div>
+                            {hasComponentFlow && (
+                                <div className="flex bg-slate-900 border border-slate-800 p-0.5 rounded-md text-[8px] font-bold">
+                                    <button 
+                                        onClick={() => toggleStreamMode(streamId, 'total')}
+                                        className={`flex-1 py-0.5 px-1 rounded-sm transition-all ${activeMode === 'total' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+                                    >
+                                        Total + Comp
+                                    </button>
+                                    <button 
+                                        onClick={() => toggleStreamMode(streamId, 'component')}
+                                        className={`flex-1 py-0.5 px-1 rounded-sm transition-all ${activeMode === 'component' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+                                    >
+                                        Comp Flows
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Fields List */}
+                        <div className="space-y-1 mt-1">
+                            {fieldsToRender && Object.keys(fieldsToRender).map((fieldKey) => (
+                                <div key={fieldKey} className="flex items-center justify-between space-x-1">
+                                    <span className="text-[9px] text-slate-400 shrink-0 font-semibold">{fieldsToRender[fieldKey].label}:</span>
+                                    <select
+                                        value={userSelections[`${streamId}_${fieldKey}_${activeMode}`] || ''}
+                                        onChange={(e) => handleSelectLabel(streamId, fieldKey, activeMode, e.target.value)}
+                                        className={`text-[10px] py-0.5 px-1 rounded font-mono border bg-slate-900 text-slate-100 max-w-[140px] truncate ${
+                                            showResult 
+                                                ? isFieldCorrect(streamId, fieldKey, activeMode) 
+                                                    ? 'border-emerald-500 bg-emerald-950/30' 
+                                                    : 'border-rose-500 bg-rose-950/30'
+                                                : 'border-slate-800 focus:border-indigo-500'
+                                        }`}
+                                    >
+                                        <option value="">-- select --</option>
+                                        {fieldsToRender[fieldKey].options.map(opt => (
+                                            <option key={opt} value={opt}>{opt}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                );
+            };
+
+            return (
+                <div ref={containerRef} className="w-full min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans antialiased selection:bg-indigo-500/30">
+                    {/* HEADER NAVBAR */}
+                    <header className="bg-slate-950 border-b border-slate-800 sticky top-0 z-50 px-4 py-3 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+                        <div className="flex items-center space-x-3 self-start sm:self-auto">
+                            <div className="bg-gradient-to-tr from-indigo-500 to-purple-500 p-2 rounded-lg text-white shadow-lg shadow-indigo-500/20">
+                                <SlidersIcon className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <h1 className="text-lg font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">
+                                    FlowSheet Master
+                                </h1>
+                                <p className="text-[10px] text-indigo-400 font-medium tracking-wide uppercase">LMS Training Edition</p>
+                            </div>
+                        </div>
+
+                        {/* Global Navigation Tabs */}
+                        <nav className="flex space-x-1 bg-slate-900 p-1 rounded-xl border border-slate-800 w-full sm:w-auto overflow-x-auto">
+                            <button
+                                onClick={() => setActiveTab('tutorial')}
+                                className={`flex-1 sm:flex-initial flex items-center justify-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 whitespace-nowrap ${
+                                    activeTab === 'tutorial'
+                                        ? 'bg-indigo-600 text-white shadow-md'
+                                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                                }`}
+                            >
+                                <BookOpenIcon />
+                                <span>Training Guide</span>
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('practice')}
+                                className={`flex-1 sm:flex-initial flex items-center justify-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 whitespace-nowrap ${
+                                    activeTab === 'practice'
+                                        ? 'bg-indigo-600 text-white shadow-md'
+                                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                                }`}
+                            >
+                                <LayersIcon />
+                                <span>Active Challenges</span>
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('sandbox')}
+                                className={`flex-1 sm:flex-initial flex items-center justify-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 whitespace-nowrap ${
+                                    activeTab === 'sandbox'
+                                        ? 'bg-indigo-600 text-white shadow-md'
+                                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                                }`}
+                            >
+                                <TrendingUpIcon />
+                                <span>DoF Sandbox</span>
+                            </button>
+                        </nav>
+
+                        {/* Embed Helper Button & Score Badge */}
+                        <div className="flex items-center space-x-2 self-end sm:self-auto">
+                            <button
+                                onClick={() => setShowEmbedHelper(true)}
+                                className="flex items-center space-x-1 px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-[10px] font-bold text-indigo-400 rounded-lg border border-slate-800 hover:border-indigo-500/20 transition-all"
+                                title="Get LMS Explicit Embed Code"
+                            >
+                                <SettingsIcon />
+                                <span>LMS Embed Setup</span>
+                            </button>
+                            <div className="flex items-center space-x-2 bg-slate-900 px-3 py-1.5 rounded-lg border border-indigo-500/20">
+                                <AwardIcon />
+                                <span className="text-xs font-bold text-slate-300">XP: <span className="text-indigo-400 text-sm">{quizScore}</span></span>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* BLACKBOARD / LMS EXPLICIT EMBED CODE HELPER MODAL */}
+                    {showEmbedHelper && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
+                            <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl relative">
+                                <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+                                    <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center space-x-2">
+                                        <SlidersIcon className="h-4 w-4 text-indigo-400" />
+                                        <span>Blackboard Embed Size Fix</span>
+                                    </h3>
+                                    <button 
+                                        onClick={() => setShowEmbedHelper(false)}
+                                        className="text-slate-400 hover:text-white font-bold text-sm"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                                <p className="text-xs text-slate-300 mb-3 leading-relaxed">
+                                    Blackboard often limits dynamic iframe sizing. Copy and paste the explicit HTML snippet below into your Blackboard / Canvas page HTML code editor to force the app to display perfectly at <strong>780px high</strong>:
+                                </p>
+                                <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 mb-4">
+                                    <code className="text-[11px] font-mono text-indigo-400 select-all break-all block">
+                                        {`<iframe src="[YOUR_APP_LINK_HERE]" width="100%" height="780" style="width: 100%; height: 780px; min-height: 780px; border: none; overflow: auto;" scrolling="yes"></iframe>`}
+                                    </code>
+                                </div>
+                                <div className="text-[10px] text-slate-400 flex items-start space-x-2 bg-indigo-950/20 p-3 rounded-lg border border-indigo-900/30">
+                                    <InfoIcon />
+                                    <span><strong>Teacher Guide:</strong> Simply replace <code className="text-indigo-300">[YOUR_APP_LINK_HERE]</code> with the actual URL address of this uploaded file inside your LMS files collection.</span>
+                                </div>
+                                <div className="mt-5 flex justify-end">
+                                    <button
+                                        onClick={() => setShowEmbedHelper(false)}
+                                        className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all"
+                                    >
+                                        Dismiss Instructions
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* MAIN CONTENT AREA */}
+                    <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+                        
+                        {/* TAB 1: TUTORIAL GUIDE */}
+                        {activeTab === 'tutorial' && (
+                            <div className="lg:col-span-12 space-y-6">
+                                <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6 relative overflow-hidden">
+                                    <div className="absolute right-0 top-0 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none"></div>
+                                    <div className="max-w-3xl">
+                                        <span className="text-xs font-bold uppercase tracking-wider text-indigo-400 bg-indigo-950 px-2.5 py-1 rounded-full border border-indigo-900">
+                                            Process Flowchart Lesson
+                                        </span>
+                                        <h2 className="text-2xl sm:text-3xl font-extrabold text-white mt-3 leading-tight">
+                                            How to Completely Label a Chemical Process Flowchart
+                                        </h2>
+                                        <p className="text-slate-400 mt-2 text-sm sm:text-base leading-relaxed">
+                                            In chemical engineering mass balances (e.g., Felder & Rousseau), learning how to write down knowns and unknowns correctly is 90% of the battle. This training guide introduces the standard rules of flowcharting.
+                                        </p>
+                                    </div>
+
+                                    {/* Interactive Cards */}
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+                                        <div 
+                                            onClick={() => setActiveTutorialSlide(0)}
+                                            className={`cursor-pointer p-5 rounded-xl border transition-all duration-200 ${
+                                                activeTutorialSlide === 0 
+                                                    ? 'bg-slate-900 border-indigo-500 shadow-md ring-1 ring-indigo-500/20' 
+                                                    : 'bg-slate-900/50 border-slate-800 hover:border-slate-700'
+                                            }`}
+                                        >
+                                            <div className="h-9 w-9 bg-indigo-500/10 rounded-lg flex items-center justify-center text-indigo-400 font-bold mb-3">1</div>
+                                            <h3 className="text-base sm:text-lg font-bold text-slate-100">Rule 1: Continuous Stream Identification</h3>
+                                            <p className="text-slate-400 text-xs sm:text-sm mt-1.5 leading-relaxed">
+                                                Identify every flow rate (e.g., mass rate <span className="font-mono text-indigo-300">m</span> in kg/h or molar rate <span className="font-mono text-indigo-300">n</span> in mol/h) explicitly. If it is unknown, assign a clear variable name.
+                                            </p>
+                                        </div>
+
+                                        <div 
+                                            onClick={() => setActiveTutorialSlide(1)}
+                                            className={`cursor-pointer p-5 rounded-xl border transition-all duration-200 ${
+                                                activeTutorialSlide === 1 
+                                                    ? 'bg-slate-900 border-indigo-500 shadow-md ring-1 ring-indigo-500/20' 
+                                                    : 'bg-slate-900/50 border-slate-800 hover:border-slate-700'
+                                            }`}
+                                        >
+                                            <div className="h-9 w-9 bg-indigo-500/10 rounded-lg flex items-center justify-center text-indigo-400 font-bold mb-3">2</div>
+                                            <h3 className="text-base sm:text-lg font-bold text-slate-100">Rule 2: Component Specifying</h3>
+                                            <p className="text-slate-400 text-xs sm:text-sm mt-1.5 leading-relaxed">
+                                                Write down fractions for all chemical species. If a stream has <span className="font-mono text-indigo-300">N</span> components, you must label <span className="font-mono text-indigo-300">N - 1</span> fractions because they must sum to 1.
+                                            </p>
+                                        </div>
+
+                                        <div 
+                                            onClick={() => setActiveTutorialSlide(2)}
+                                            className={`cursor-pointer p-5 rounded-xl border transition-all duration-200 ${
+                                                activeTutorialSlide === 2 
+                                                    ? 'bg-slate-900 border-indigo-500 shadow-md ring-1 ring-indigo-500/20' 
+                                                    : 'bg-slate-900/50 border-slate-800 hover:border-slate-700'
+                                            }`}
+                                        >
+                                            <div className="h-9 w-9 bg-indigo-500/10 rounded-lg flex items-center justify-center text-indigo-400 font-bold mb-3">3</div>
+                                            <h3 className="text-base sm:text-lg font-bold text-slate-100">Rule 3: Splitters vs Units</h3>
+                                            <p className="text-slate-400 text-xs sm:text-sm mt-1.5 leading-relaxed">
+                                                A pure stream splitter divides flow rates, but <b>keeps compositions identical</b>. A separation unit (like distillation) changes both compositions and flow rates.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Pro-Tips Panel */}
+                                    <div className="bg-slate-900 rounded-xl p-5 border border-slate-800 mt-6">
+                                        <h4 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-indigo-300 flex items-center space-x-2">
+                                            <InfoIcon />
+                                            <span>Pro-Tip: Degrees of Freedom (DoF) Checklist</span>
+                                        </h4>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3 text-slate-400 text-xs sm:text-sm">
+                                            <div className="space-y-2">
+                                                <p className="flex items-start space-x-2">
+                                                    <span className="text-indigo-400 font-bold mt-0.5">✓</span>
+                                                    <span><b>Always check units:</b> Do not mix mass fractions with molar flow rates or vice versa. Convert them first!</span>
+                                                </p>
+                                                <p className="flex items-start space-x-2">
+                                                    <span className="text-indigo-400 font-bold mt-0.5">✓</span>
+                                                    <span><b>Scale representation:</b> If no flow rates are known, you must set a Basis of Calculation (e.g., 100 mol/h).</span>
+                                                </p>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <p className="flex items-start space-x-2">
+                                                    <span className="text-indigo-400 font-bold mt-0.5">✓</span>
+                                                    <span><b>DoF Balance:</b> DoF = Unknowns - Balances - Relations. Target is exactly 0.</span>
+                                                </p>
+                                                <p className="flex items-start space-x-2">
+                                                    <span className="text-indigo-400 font-bold mt-0.5">✓</span>
+                                                    <span><b>Inerts:</b> Keep track of non-reactive compounds. They carry straight through reactors.</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex justify-end mt-6">
+                                        <button
+                                            onClick={() => setActiveTab('practice')}
+                                            className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-indigo-500/20 transition-all flex items-center space-x-2 text-sm"
+                                        >
+                                            <span>Start Practice Challenges</span>
+                                            <ArrowRightIcon />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* TAB 2: ACTIVE PRACTICE CHALLENGES */}
+                        {activeTab === 'practice' && (
+                            <>
+                                {/* Sidebar */}
+                                <div className="lg:col-span-4 space-y-4">
+                                    <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4">
+                                        <h3 className="text-sm font-extrabold text-slate-100 flex items-center space-x-2 mb-3">
+                                            <LayersIcon />
+                                            <span>Select Challenge</span>
+                                        </h3>
+                                        
+                                        <div className="space-y-2">
+                                            {SCENARIOS.map((sc, idx) => (
+                                                <button
+                                                    key={sc.id}
+                                                    onClick={() => setScenarioIndex(idx)}
+                                                    className={`w-full text-left p-3.5 rounded-xl border transition-all ${
+                                                        scenarioIndex === idx
+                                                            ? 'bg-slate-900 border-indigo-500 ring-2 ring-indigo-500/20'
+                                                            : 'bg-slate-900/40 border-slate-800 hover:bg-slate-900/60'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center justify-between">
+                                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                                                            sc.difficulty === 'Easy' ? 'bg-emerald-950 text-emerald-400 border border-emerald-900' :
+                                                            sc.difficulty === 'Medium' ? 'bg-amber-950 text-amber-400 border border-amber-900' :
+                                                            'bg-rose-950 text-rose-400 border border-rose-900'
+                                                        }`}>
+                                                            {sc.difficulty}
+                                                        </span>
+                                                        <span className="text-[10px] text-slate-500 font-medium">{sc.equipment}</span>
+                                                    </div>
+                                                    <h4 className="font-bold text-slate-200 mt-2 text-xs sm:text-sm">{sc.title}</h4>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 space-y-4">
+                                        <div className="flex items-center space-x-2">
+                                            <FileTextIcon />
+                                            <h3 className="font-extrabold text-slate-100 text-sm">Verbal Description</h3>
+                                        </div>
+                                        <div className="bg-slate-900 p-3.5 rounded-xl border border-slate-800 text-xs sm:text-sm leading-relaxed text-slate-300 font-medium">
+                                            {scenario.description}
+                                        </div>
+                                        <div className="text-[11px] text-indigo-300 flex items-start space-x-2 bg-indigo-950/40 p-3 rounded-lg border border-indigo-900/30">
+                                            <HelpCircleIcon className="shrink-0 mt-0.5" />
+                                            <span>{scenario.instruction}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Main Diagram Space */}
+                                <div className="lg:col-span-8 flex flex-col space-y-4 min-w-0">
+                                    <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 sm:p-6 relative flex-1 min-h-[450px] flex flex-col">
+                                        <div className="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
+                                            <div>
+                                                <h2 className="text-base sm:text-lg font-bold text-slate-100">{scenario.title}</h2>
+                                                <p className="text-[10px] sm:text-xs text-slate-400">Assemble precise chemical stream definitions</p>
+                                            </div>
+                                            <button 
+                                                onClick={() => {
+                                                    setUserSelections({});
+                                                    setShowResult(false);
+                                                    setShowDofQuiz(false);
+                                                    setDofChecked(false);
+                                                }}
+                                                className="flex items-center space-x-1 px-3 py-1 bg-slate-900 hover:bg-slate-800 text-xs text-slate-300 font-bold rounded-lg border border-slate-800 whitespace-nowrap"
+                                            >
+                                                <RefreshCwIcon />
+                                                <span>Reset</span>
+                                            </button>
+                                        </div>
+
+                                        {/* Dynamic Flow Diagrams (With Mobile Horizontal Scroll Safeguard) */}
+                                        <div className="relative flex-1 bg-slate-900 rounded-xl border border-slate-800/80 overflow-x-auto overflow-y-hidden p-4 flex items-center justify-start sm:justify-center min-h-[380px]">
+                                            
+                                            {scenario.id === 'mixer' && (
+                                                <div className="relative w-[600px] shrink-0 h-[300px]">
+                                                    <div className="absolute left-[240px] top-[100px] w-24 h-24 rounded-full border-4 border-indigo-500 bg-slate-950 flex flex-col items-center justify-center shadow-lg shadow-indigo-500/10 z-10">
+                                                        <span className="font-extrabold text-xs text-slate-200 uppercase tracking-wider">Mixer</span>
+                                                        <span className="text-[10px] text-indigo-400">Unit M-1</span>
+                                                    </div>
+
+                                                    <svg className="absolute inset-0 w-full h-full pointer-events-none">
+                                                        <defs>
+                                                            <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                                                <path d="M 0 0 L 10 5 L 0 10 z" fill="#6366f1" />
+                                                            </marker>
+                                                        </defs>
+                                                        <path d="M 40 120 L 240 120" stroke="#6366f1" strokeWidth="3" markerEnd="url(#arrow)" />
+                                                        <path d="M 40 210 L 180 210 L 180 150 L 240 150" stroke="#6366f1" strokeWidth="3" markerEnd="url(#arrow)" />
+                                                        <path d="M 336 150 L 520 150" stroke="#10b981" strokeWidth="3" markerEnd="url(#arrow)" />
+                                                    </svg>
+
+                                                    {/* Stream 1 Feed (Left Top) */}
+                                                    <div className="absolute left-[10px] top-[10px]">
+                                                        {renderStreamOverlay('feed1', 'Dilute Feed Stream 1')}
+                                                    </div>
+
+                                                    {/* Stream 2 Feed (Left Bottom) */}
+                                                    <div className="absolute left-[10px] top-[165px]">
+                                                        {renderStreamOverlay('feed2', 'Pure Ethanol Feed 2')}
+                                                    </div>
+
+                                                    {/* Product Stream (Right) */}
+                                                    <div className="absolute right-[10px] top-[80px]">
+                                                        {renderStreamOverlay('product', 'Diluted Product')}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {scenario.id === 'distillation' && (
+                                                <div className="relative w-[650px] shrink-0 h-[350px]">
+                                                    <div className="absolute left-[260px] top-[50px] w-20 border-4 border-indigo-500 bg-slate-950 rounded-full flex flex-col items-center justify-between py-6 shadow-lg shadow-indigo-500/10 z-10" style={{ height: '240px' }}>
+                                                        <div className="w-12 h-1 bg-slate-800 rounded"></div>
+                                                        <div className="w-12 h-1 bg-slate-800 rounded"></div>
+                                                        <span className="font-extrabold text-xs text-slate-200 uppercase tracking-widest -rotate-90 my-6">Distill</span>
+                                                        <div className="w-12 h-1 bg-slate-800 rounded"></div>
+                                                        <div className="w-12 h-1 bg-slate-800 rounded"></div>
+                                                    </div>
+
+                                                    <svg className="absolute inset-0 w-full h-full pointer-events-none">
+                                                        <path d="M 40 170 L 260 170" stroke="#6366f1" strokeWidth="3" markerEnd="url(#arrow)" />
+                                                        <path d="M 300 80 L 440 80" stroke="#10b981" strokeWidth="3" markerEnd="url(#arrow)" />
+                                                        <path d="M 300 260 L 440 260" stroke="#f59e0b" strokeWidth="3" markerEnd="url(#arrow)" />
+                                                    </svg>
+
+                                                    {/* Feed Stream */}
+                                                    <div className="absolute left-[10px] top-[40px]">
+                                                        {renderStreamOverlay('feed', 'Feed Stream')}
+                                                    </div>
+
+                                                    {/* Overhead Stream */}
+                                                    <div className="absolute right-[10px] top-[5px]">
+                                                        {renderStreamOverlay('overhead', 'Overhead Product')}
+                                                    </div>
+
+                                                    {/* Bottoms Stream */}
+                                                    <div className="absolute right-[10px] top-[175px]">
+                                                        {renderStreamOverlay('bottoms', 'Bottoms Product')}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {scenario.id === 'reactor_recycle' && (
+                                                <div className="relative w-[700px] shrink-0 h-[380px]">
+                                                    <div className="absolute left-[240px] top-[140px] w-28 h-20 rounded-xl border-4 border-indigo-500 bg-slate-950 flex flex-col items-center justify-center shadow-lg shadow-indigo-500/10 z-10">
+                                                        <span className="font-extrabold text-xs text-slate-200 uppercase tracking-wider">Reactor</span>
+                                                        <span className="text-[10px] text-indigo-400">R-101</span>
+                                                    </div>
+
+                                                    <div className="absolute left-[440px] top-[140px] w-20 h-20 rounded-full border-4 border-teal-500 bg-slate-950 flex flex-col items-center justify-center shadow-lg shadow-teal-500/10 z-10">
+                                                        <span className="font-extrabold text-[10px] text-slate-200 uppercase tracking-wider">Separator</span>
+                                                        <span className="text-[9px] text-teal-400">V-102</span>
+                                                    </div>
+
+                                                    <div className="absolute left-[380px] top-[50px] w-4 h-4 rounded-full bg-amber-500 border border-slate-900 z-15"></div>
+
+                                                    <svg className="absolute inset-0 w-full h-full pointer-events-none">
+                                                        <path d="M 30 180 L 150 180" stroke="#6366f1" strokeWidth="2.5" markerEnd="url(#arrow)" />
+                                                        <path d="M 150 180 L 240 180" stroke="#6366f1" strokeWidth="2.5" markerEnd="url(#arrow)" />
+                                                        <path d="M 352 180 L 440 180" stroke="#10b981" strokeWidth="3" markerEnd="url(#arrow)" />
+                                                        <path d="M 480 220 L 480 320" stroke="#06b6d4" strokeWidth="2.5" markerEnd="url(#arrow)" />
+                                                        <path d="M 480 140 L 480 58 L 382 58" stroke="#f59e0b" strokeWidth="2.5" markerEnd="url(#arrow)" />
+                                                        <path d="M 480 58 L 620 58" stroke="#ef4444" strokeWidth="2.5" markerEnd="url(#arrow)" />
+                                                        <path d="M 382 58 L 150 58 L 150 178" stroke="#3b82f6" strokeWidth="2.5" markerEnd="url(#arrow)" />
+                                                    </svg>
+
+                                                    {/* Fresh Feed */}
+                                                    <div className="absolute left-[5px] top-[210px]">
+                                                        {renderStreamOverlay('fresh_feed', 'Fresh Feed')}
+                                                    </div>
+
+                                                    {/* Combined Feed */}
+                                                    <div className="absolute left-[135px] top-[210px]">
+                                                        {renderStreamOverlay('reactor_feed', 'Combined Reactor Feed')}
+                                                    </div>
+
+                                                    {/* Recycle Loop */}
+                                                    <div className="absolute left-[140px] top-[75px]">
+                                                        {renderStreamOverlay('recycle', 'Recycle Loop')}
+                                                    </div>
+
+                                                    {/* Purge Stream */}
+                                                    <div className="absolute right-[5px] top-[75px]">
+                                                        {renderStreamOverlay('purge', 'Purge TAP')}
+                                                    </div>
+
+                                                    {/* Liquid Product */}
+                                                    <div className="absolute right-[40px] top-[255px]">
+                                                        {renderStreamOverlay('liquid_product', 'Liquid Product')}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                        </div>
+
+                                        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between border-t border-slate-800 pt-4 gap-4">
+                                            <div className="flex items-center space-x-2 text-xs text-slate-400">
+                                                <InfoIcon />
+                                                <span>Students can label any stream using either Overall Rates + Fractions or individual Component Flows.</span>
+                                            </div>
+
+                                            <button
+                                                onClick={checkLabels}
+                                                disabled={!allSelected()}
+                                                className={`px-6 py-2.5 rounded-xl font-bold flex items-center space-x-2 transition-all text-xs sm:text-sm ${
+                                                    allSelected() 
+                                                        ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' 
+                                                        : 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                                                }`}
+                                            >
+                                                <span>Validate Flowsheet</span>
+                                                <CheckCircle2Icon />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Success/Failure Output Card */}
+                                    {showResult && (
+                                        <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 space-y-4">
+                                            <div className="flex items-start justify-between">
+                                                <div className="flex items-center space-x-3">
+                                                    {getAccuracyRate() === 100 ? (
+                                                        <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-lg">
+                                                            <CheckIcon />
+                                                        </div>
+                                                    ) : (
+                                                        <div className="p-2 bg-rose-500/10 text-rose-400 rounded-lg">
+                                                            <XCircleIcon />
+                                                        </div>
+                                                    )}
+                                                    <div>
+                                                        <h3 className="text-sm sm:text-base font-bold text-slate-100">
+                                                            {getAccuracyRate() === 100 ? 'Process Flowchart Labeled Successfully!' : 'Some Stream Labels require Adjustment'}
+                                                        </h3>
+                                                        <p className="text-xs text-slate-400">Current Accuracy: {getAccuracyRate()}%</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {getAccuracyRate() !== 100 && (
+                                                <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl text-xs text-slate-400 leading-relaxed whitespace-pre-line">
+                                                    Check all active selectors. If you toggled some streams to component flowrates, ensure you've picked terms like '0.30 * n1 [mol B/h]' instead of generic fractions or total values.
+                                                </div>
+                                            )}
+
+                                            {getAccuracyRate() === 100 && (
+                                                <div className="space-y-4">
+                                                    <div className="bg-emerald-950/20 border border-emerald-900/30 p-4 rounded-xl text-xs text-emerald-300 leading-relaxed whitespace-pre-line">
+                                                        {scenario.solutionExplanation}
+                                                    </div>
+
+                                                    {/* DoF MINI-GAME */}
+                                                    {showDofQuiz && (
+                                                        <div className="bg-slate-900 border border-indigo-500/30 p-5 rounded-xl space-y-4">
+                                                            <div className="flex items-center justify-between">
+                                                                <h4 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider flex items-center space-x-2">
+                                                                    <span className="h-2 w-2 rounded-full bg-indigo-400 animate-ping"></span>
+                                                                    <span>Part 2: Degree of Freedom (DoF) Evaluation</span>
+                                                                </h4>
+                                                                <span className="text-xs text-indigo-400 font-mono">DoF = Unknowns - Balances - Relations</span>
+                                                            </div>
+
+                                                            <p className="text-xs text-slate-400 leading-relaxed">
+                                                                Now, complete a Degree of Freedom (DoF) calculation. How many independent equations or parameters are still missing to completely specify this system?
+                                                            </p>
+
+                                                            <div className="flex flex-col sm:flex-row items-center gap-4">
+                                                                <div className="flex items-center space-x-3 w-full sm:w-auto">
+                                                                    <span className="text-xs text-slate-300">Your DoF Calculation:</span>
+                                                                    <input
+                                                                        type="number"
+                                                                        value={userDofGuess}
+                                                                        onChange={(e) => setUserDofGuess(e.target.value)}
+                                                                        className="w-16 bg-slate-950 border border-slate-800 rounded-lg p-2 text-center text-sm font-bold text-indigo-400 focus:border-indigo-500"
+                                                                        placeholder="0"
+                                                                    />
+                                                                </div>
+                                                                <button
+                                                                    onClick={checkDof}
+                                                                    className="w-full sm:w-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition-all"
+                                                                >
+                                                                    Verify DoF
+                                                                </button>
+                                                            </div>
+
+                                                            {dofChecked && (
+                                                                <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 space-y-3">
+                                                                    <div className="flex items-center space-x-2">
+                                                                        {parseInt(userDofGuess) === scenario.dof.answer ? (
+                                                                            <span className="text-xs font-bold text-emerald-400 flex items-center space-x-1">
+                                                                                <CheckIcon />
+                                                                                <span>Correct DoF Analysis!</span>
+                                                                            </span>
+                                                                        ) : (
+                                                                            <span className="text-xs font-bold text-rose-400 flex items-center space-x-1">
+                                                                                <XCircleIcon />
+                                                                                <span>Calculation Error</span>
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    <p className="text-xs text-slate-400 whitespace-pre-line leading-relaxed">
+                                                                        {scenario.dof.explanation}
+                                                                    </p>
+
+                                                                    {parseInt(userDofGuess) === scenario.dof.answer && (
+                                                                        <div className="pt-2 border-t border-slate-800 flex justify-end">
+                                                                            <button
+                                                                                onClick={handleNextLevel}
+                                                                                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl flex items-center space-x-2"
+                                                                            >
+                                                                                <span>Proceed to Next Challenge</span>
+                                                                                <ArrowRightIcon />
+                                                                            </button>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </>
+                        )}
+
+                        {/* TAB 3: DOF SANDBOX */}
+                        {activeTab === 'sandbox' && (
+                            <div className="lg:col-span-12 space-y-6">
+                                <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6">
+                                    <div className="flex items-center justify-between mb-4 border-b border-slate-800 pb-3 flex-wrap gap-2">
+                                        <div>
+                                            <h2 className="text-lg sm:text-xl font-bold text-slate-100">Flowsheet & DoF Sandbox</h2>
+                                            <p className="text-xs sm:text-sm text-slate-400">Construct custom streams, assign variables, and test degrees of freedom</p>
+                                        </div>
+                                        <button
+                                            onClick={addSandboxStream}
+                                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl flex items-center space-x-1.5"
+                                        >
+                                            <span>Add Custom Stream</span>
+                                        </button>
+                                    </div>
+
+                                    {/* Stream list */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {sandboxStreams.map((st, sIdx) => (
+                                            <div key={st.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-4">
+                                                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                                                    <div className="flex items-center space-x-2">
+                                                        <span className="text-xs font-bold px-2 py-0.5 rounded bg-indigo-950 text-indigo-400 border border-indigo-900">
+                                                            {st.id}
+                                                        </span>
+                                                        <input
+                                                            type="text"
+                                                            value={st.type}
+                                                            onChange={(e) => updateSandboxStream(sIdx, 'type', e.target.value)}
+                                                            className="bg-transparent border-0 font-bold text-sm text-slate-200 focus:ring-0 p-0 w-24"
+                                                        />
+                                                    </div>
+                                                    <button
+                                                        onClick={() => setSandboxStreams(prev => prev.filter(stream => stream.id !== st.id))}
+                                                        className="text-slate-500 hover:text-slate-300 text-xs"
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </div>
+
+                                                <div className="space-y-3">
+                                                    <div>
+                                                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                                                            Flowrate (e.g., "100 kg/h" or "m1 [kg/h]")
+                                                        </label>
+                                                        <input
+                                                            type="text"
+                                                            value={st.flow}
+                                                            onChange={(e) => updateSandboxStream(sIdx, 'flow', e.target.value)}
+                                                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-indigo-400 font-mono"
+                                                        />
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                                            Chemical Species & Fractions
+                                                        </label>
+                                                        
+                                                        {st.species.map((sp, spIdx) => (
+                                                            <div key={spIdx} className="flex items-center space-x-2">
+                                                                <input
+                                                                    type="text"
+                                                                    value={sp.name}
+                                                                    onChange={(e) => updateSandboxSpecies(sIdx, spIdx, 'name', e.target.value)}
+                                                                    placeholder="Species A"
+                                                                    className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-xs text-slate-300"
+                                                                />
+                                                                <input
+                                                                    type="text"
+                                                                    value={sp.frac}
+                                                                    onChange={(e) => updateSandboxSpecies(sIdx, spIdx, 'frac', e.target.value)}
+                                                                    placeholder="0.40"
+                                                                    className="w-20 bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-xs text-center font-mono text-indigo-400"
+                                                                />
+                                                            </div>
+                                                        ))}
+
+                                                        <button
+                                                            onClick={() => addSandboxSpecies(sIdx)}
+                                                            className="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold flex items-center space-x-1"
+                                                        >
+                                                            <span>+ Add Component</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* DoF Real-time Estimator */}
+                                    <div className="mt-8 bg-slate-900 border border-slate-800 rounded-xl p-5">
+                                        <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-indigo-400 mb-3 flex items-center space-x-2">
+                                            <SlidersIcon className="h-4 w-4" />
+                                            <span>Real-time Degrees of Freedom Estimator</span>
+                                        </h3>
+
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
+                                            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-center">
+                                                <span className="block text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500">Unspecified Variables</span>
+                                                <span className="text-lg sm:text-2xl font-extrabold text-indigo-400">
+                                                    {sandboxStreams.filter(st => st.flow.includes('[') || st.species.some(sp => sp.frac.includes('x') || sp.frac.includes('-'))).length}
+                                                </span>
+                                            </div>
+
+                                            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-center">
+                                                <span className="block text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500">Total Streams</span>
+                                                <span className="text-lg sm:text-2xl font-extrabold text-teal-400">{sandboxStreams.length}</span>
+                                            </div>
+
+                                            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-center">
+                                                <span className="block text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500">Suggested Balances</span>
+                                                <span className="text-lg sm:text-2xl font-extrabold text-amber-500">
+                                                    {sandboxStreams.length > 0 ? Math.max(0, sandboxStreams[0].species.length) : 0}
+                                                </span>
+                                            </div>
+
+                                            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-center">
+                                                <span className="block text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500">DoF Estimate</span>
+                                                <span className="text-lg sm:text-2xl font-extrabold text-indigo-400">
+                                                    {Math.max(0, sandboxStreams.filter(st => st.flow.includes('[') || st.species.some(sp => sp.frac.includes('x') || sp.frac.includes('-'))).length - (sandboxStreams.length > 0 ? sandboxStreams[0].species.length : 0))}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-4 text-[11px] sm:text-xs text-slate-500 flex items-start space-x-2">
+                                            <InfoIcon />
+                                            <span>
+                                                This estimation assumes a single node processor. In complex systems, internal recycle loops or multi-unit dividers affect equations.
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                    </main>
+
+                    {/* FOOTER */}
+                    <footer className="bg-slate-950 border-t border-slate-800 py-6 px-4 mt-auto">
+                        <div className="max-w-7xl w-full mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+                            <div>
+                                <span className="font-bold text-slate-400">FlowSheet Master</span> - Chemical Process Engineering Training Tool.
+                            </div>
+                            <div className="flex space-x-4">
+                                <span>Ideal for Felder & Rousseau Material Balances Prep</span>
+                                <span>•</span>
+                                <span>DoF Calculator v2.1</span>
+                            </div>
+                        </div>
+                    </footer>
+                </div>
+            );
+        }
+
+        // Mount the React Application
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

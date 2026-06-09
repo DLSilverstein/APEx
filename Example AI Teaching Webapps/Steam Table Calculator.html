@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thermodynamic Steam Table Calculator</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- React and ReactDOM -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  
+  <!-- Babel Standalone for inline JSX compilation -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-slate-100 min-h-screen">
+
+  <!-- Root mount element for React App -->
+  <div id="root"></div>
+
+  <!-- React Application Source -->
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // --- Inline SVG Icon Components to eliminate external icon dependency issues ---
+    const Beaker = ({ size = 24, className = "" }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M4.5 3h15" />
+        <path d="M6 3v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V3" />
+        <path d="M6 14h12" />
+      </svg>
+    );
+
+    const Calculator = ({ size = 24, className = "" }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <rect width="16" height="20" x="4" y="2" rx="2" />
+        <line x1="8" x2="16" y1="6" y2="6" />
+        <line x1="16" x2="16" y1="14" y2="18" />
+        <path d="M16 10h.01" />
+        <path d="M12 10h.01" />
+        <path d="M8 10h.01" />
+        <path d="M12 14h.01" />
+        <path d="M8 14h.01" />
+        <path d="M12 18h.01" />
+        <path d="M8 18h.01" />
+      </svg>
+    );
+
+    const HelpCircle = ({ size = 24, className = "" }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <circle cx="12" cy="12" r="10" />
+        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+        <line x1="12" x2="12.01" y1="17" y2="17" />
+      </svg>
+    );
+
+    const CheckCircle2 = ({ size = 24, className = "" }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <circle cx="12" cy="12" r="10" />
+        <path d="m9 12 2 2 4-4" />
+      </svg>
+    );
+
+    const AlertCircle = ({ size = 24, className = "" }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" x2="12" y1="8" y2="12" />
+        <line x1="12" x2="12.01" y1="16" y2="16" />
+      </svg>
+    );
+
+    const Thermometer = ({ size = 24, className = "" }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z" />
+      </svg>
+    );
+
+    const Gauge = ({ size = 24, className = "" }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="m12 14 4-4" />
+        <path d="M3.34 19a10 10 0 1 1 17.32 0" />
+      </svg>
+    );
+
+    const BookOpen = ({ size = 24, className = "" }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+      </svg>
+    );
+
+    // Hardcoded interpolation dataset derived from IAPWS-IF97 saturation tables.
+    // Columns: T(°C), P(kPa), vf(m³/kg), vg, uf(kJ/kg), ug, hf(kJ/kg), hg, sf(kJ/kgK), sg
+    const rawSatData = [
+      [0.01, 0.6117, 0.001000, 206.00, 0.00, 2374.9, 0.00, 2500.9, 0.0000, 9.1556],
+      [5, 0.8725, 0.001000, 147.03, 21.02, 2381.8, 21.02, 2510.1, 0.0763, 9.0249],
+      [10, 1.228, 0.001000, 106.30, 42.02, 2388.7, 42.02, 2519.2, 0.1511, 8.8998],
+      [15, 1.706, 0.001001, 77.88, 62.98, 2395.5, 62.98, 2528.3, 0.2245, 8.7803],
+      [20, 2.339, 0.001002, 57.76, 83.91, 2402.3, 83.91, 2537.4, 0.2965, 8.6661],
+      [25, 3.169, 0.001003, 43.34, 104.83, 2409.1, 104.83, 2546.5, 0.3672, 8.5567],
+      [30, 4.246, 0.001004, 32.87, 125.73, 2415.8, 125.74, 2555.6, 0.4368, 8.4520],
+      [35, 5.628, 0.001006, 25.20, 146.63, 2422.4, 146.64, 2564.5, 0.5051, 8.3517],
+      [40, 7.384, 0.001008, 19.51, 167.53, 2429.1, 167.53, 2573.5, 0.5724, 8.2556],
+      [45, 9.593, 0.001010, 15.25, 188.43, 2435.7, 188.44, 2582.4, 0.6386, 8.1633],
+      [50, 12.35, 0.001012, 12.03, 209.33, 2442.3, 209.34, 2591.3, 0.7038, 8.0748],
+      [60, 19.94, 0.001017, 7.667, 251.16, 2455.4, 251.18, 2608.8, 0.8313, 7.9081],
+      [70, 31.19, 0.001023, 5.040, 293.04, 2468.3, 293.07, 2626.1, 0.9551, 7.7535],
+      [80, 47.39, 0.001029, 3.405, 334.97, 2481.1, 335.02, 2643.0, 1.0756, 7.6106],
+      [90, 70.14, 0.001036, 2.359, 376.97, 2493.5, 377.04, 2659.6, 1.1929, 7.4776],
+      [100, 101.325, 0.001044, 1.673, 419.06, 2505.6, 419.17, 2675.6, 1.3072, 7.3542],
+      [110, 143.3, 0.001052, 1.210, 461.27, 2517.4, 461.42, 2691.1, 1.4188, 7.2382],
+      [120, 198.5, 0.001060, 0.8915, 503.60, 2528.9, 503.81, 2706.0, 1.5278, 7.1292],
+      [130, 270.1, 0.001070, 0.6681, 546.10, 2539.7, 546.38, 2720.1, 1.6346, 7.0263],
+      [140, 361.3, 0.001080, 0.5085, 588.80, 2550.1, 589.16, 2733.5, 1.7392, 6.9294],
+      [150, 475.8, 0.001091, 0.3925, 631.66, 2559.1, 632.18, 2745.9, 1.8418, 6.8371],
+      [160, 617.8, 0.001102, 0.3068, 674.83, 2567.8, 675.51, 2757.5, 1.9426, 6.7492],
+      [170, 791.7, 0.001114, 0.2426, 718.30, 2575.9, 719.18, 2768.3, 2.0417, 6.6655],
+      [180, 1002.1, 0.001127, 0.1938, 762.08, 2583.2, 763.21, 2777.8, 2.1394, 6.5855],
+      [190, 1254.4, 0.001141, 0.1564, 806.18, 2589.6, 807.62, 2785.9, 2.2357, 6.5088],
+      [200, 1553.8, 0.001157, 0.1272, 850.64, 2594.8, 852.45, 2792.0, 2.3309, 6.4323],
+      [220, 2318.5, 0.001190, 0.08609, 940.80, 2601.5, 943.55, 2799.1, 2.5178, 6.2844],
+      [240, 3345.9, 0.001229, 0.05971, 1033.2, 2603.2, 1037.3, 2802.0, 2.7020, 6.1415],
+      [260, 4692.3, 0.001276, 0.04218, 1128.4, 2598.6, 1134.4, 2795.5, 2.8845, 5.9996],
+      [280, 6416.6, 0.001332, 0.03015, 1226.7, 2586.2, 1235.3, 2778.6, 3.0674, 5.8522],
+      [300, 8587.9, 0.001404, 0.02165, 1330.1, 2561.4, 1342.2, 2747.5, 3.2541, 5.6980],
+      [320, 11284, 0.001500, 0.01548, 1442.2, 2519.8, 1459.2, 2694.4, 3.4503, 5.5269],
+      [340, 14598, 0.001638, 0.01079, 1568.1, 2450.4, 1592.0, 2608.1, 3.6653, 5.3217],
+      [360, 18666, 0.001895, 0.00695, 1726.2, 2321.4, 1761.6, 2451.2, 3.9168, 5.0456],
+      [374.14, 22064, 0.003106, 0.003106, 2014.6, 2014.6, 2084.3, 2084.3, 4.4070, 4.4070]
+    ];
+
+    const satTable = rawSatData.map(row => ({
+      T: row[0], P: row[1], vf: row[2], vg: row[3], uf: row[4], ug: row[5],
+      hf: row[6], hg: row[7], sf: row[8], sg: row[9]
+    }));
+
+    const propNames = {
+      T: 'Temperature',
+      P: 'Pressure',
+      h: 'Enthalpy',
+      s: 'Entropy',
+      u: 'Internal Energy',
+      v: 'Specific Volume'
+    };
+
+    // Unit conversion metrics relative to metric base variables (T: °C, P: kPa, h/u: kJ/kg, s: kJ/kgK, v: m3/kg)
+    const unitDefinitions = {
+      T: {
+        '°C': { toBase: v => v, fromBase: v => v },
+        'K': { toBase: v => v - 273.15, fromBase: v => v + 273.15 },
+        '°F': { toBase: v => (v - 32) / 1.8, fromBase: v => v * 1.8 + 32 },
+        'R': { toBase: v => (v / 1.8) - 273.15, fromBase: v => (v + 273.15) * 1.8 }
+      },
+      P: {
+        'kPa': { toBase: v => v, fromBase: v => v },
+        'MPa': { toBase: v => v * 1000, fromBase: v => v / 1000 },
+        'bar': { toBase: v => v * 100, fromBase: v => v / 100 },
+        'psi': { toBase: v => v * 6.894757, fromBase: v => v / 6.894757 },
+        'atm': { toBase: v => v * 101.325, fromBase: v => v / 101.325 },
+        'mmHg': { toBase: v => v * (101.325 / 760), fromBase: v => v / (101.325 / 760) }
+      },
+      h: {
+        'kJ/kg': { toBase: v => v, fromBase: v => v },
+        'Btu/lb': { toBase: v => v * 2.326, fromBase: v => v / 2.326 }
+      },
+      s: {
+        'kJ/(kg·K)': { toBase: v => v, fromBase: v => v },
+        'Btu/(lb·R)': { toBase: v => v * 4.1868, fromBase: v => v / 4.1868 }
+      },
+      u: {
+        'kJ/kg': { toBase: v => v, fromBase: v => v },
+        'Btu/lb': { toBase: v => v * 2.326, fromBase: v => v / 2.326 }
+      },
+      v: {
+        'm³/kg': { toBase: v => v, fromBase: v => v },
+        'ft³/lb': { toBase: v => v * 0.06242796, fromBase: v => v / 0.06242796 }
+      }
+    };
+
+    const interpolate = (x, x0, x1, y0, y1) => {
+      if (x1 === x0) return y0;
+      return y0 + (x - x0) * (y1 - y0) / (x1 - x0);
+    };
+
+    // Linear Interpolator searching across satTable coordinates
+    const getSatRowByProp = (propName, value) => {
+      if (value < satTable[0][propName] || value > satTable[satTable.length - 1][propName]) {
+        return null;
+      }
+      for (let i = 0; i < satTable.length - 1; i++) {
+        let p0 = satTable[i][propName];
+        let p1 = satTable[i + 1][propName];
+        if (value >= p0 && value <= p1) {
+          let row = {};
+          for (let key in satTable[0]) {
+            row[key] = interpolate(value, p0, p1, satTable[i][key], satTable[i + 1][key]);
+          }
+          return row;
+        }
+      }
+      return satTable[satTable.length - 1];
+    };
+
+    const examples = [
+      { label: "Saturated Standard Boiling Point", p1: 'T', v1: 100, u1: '°C', p2: 'P', v2: 101.325, u2: 'kPa' },
+      { label: "Subcooled High-Pressure State", p1: 'T', v1: 150, u1: '°C', p2: 'P', v2: 1200, u2: 'kPa' },
+      { label: "Superheated Steam Check", p1: 'T', v1: 200, u1: '°C', p2: 'P', v2: 50, u2: 'kPa' },
+      { label: "State solved by Enthalpy/Entropy", p1: 'h', v1: 2000, u1: 'kJ/kg', p2: 's', v2: 5.2, u2: 'kJ/(kg·K)' },
+    ];
+
+    function SteamTableApp() {
+      // Default to Temperature and Pressure specs
+      const [prop1, setProp1] = useState('T');
+      const [val1, setVal1] = useState('100');
+      const [unit1, setUnit1] = useState('°C');
+
+      const [prop2, setProp2] = useState('P');
+      const [val2, setVal2] = useState('101.325');
+      const [unit2, setUnit2] = useState('kPa');
+      
+      const [result, setResult] = useState(null);
+      const [error, setError] = useState('');
+      const [showSatData, setShowSatData] = useState(false);
+
+      // Default displayed output unit preferences
+      const [outputUnits, setOutputUnits] = useState({
+        T: '°C',
+        P: 'kPa',
+        h: 'kJ/kg',
+        s: 'kJ/(kg·K)',
+        u: 'kJ/kg',
+        v: 'm³/kg'
+      });
+
+      const priorities = { T: 7, P: 6, h: 5, s: 4, u: 3, v: 2 };
+
+      const performCalculation = (p1, v1Str, u1, p2, v2Str, u2) => {
+        setError('');
+        setResult(null);
+        setShowSatData(false);
+
+        let rawV1 = parseFloat(v1Str);
+        let rawV2 = parseFloat(v2Str);
+
+        if (isNaN(rawV1) || isNaN(rawV2)) {
+          setError('Please enter valid numeric values for both properties.');
+          return;
+        }
+
+        if (p1 === p2) {
+          setError('You must select two different thermodynamic properties.');
+          return;
+        }
+
+        // Convert input values to Standard Base Metric units
+        const val1Base = unitDefinitions[p1][u1].toBase(rawV1);
+        const val2Base = unitDefinitions[p2][u2].toBase(rawV2);
+
+        // Sort based on calculation priority (higher priority designated as propA)
+        let propA = p1, valA = val1Base;
+        let propB = p2, valB = val2Base;
+        if (priorities[propA] < priorities[propB]) {
+          propA = p2; valA = val2Base;
+          propB = p1; valB = val1Base;
+        }
+
+        let finalT = null;
+        let finalRow = null;
+        let statePhase = ''; // 'saturated', 'subcooled', 'superheated'
+        let warningMsg = '';
+
+        // CASE 1: Primary property is Temperature or Pressure (T or P)
+        if (propA === 'T' || propA === 'P') {
+          finalRow = getSatRowByProp(propA, valA);
+          if (!finalRow) {
+            let minBase = satTable[0][propA];
+            let maxBase = satTable[satTable.length - 1][propA];
+            let minUser = unitDefinitions[propA][propA === 'T' ? u1 : u2].fromBase(minBase).toFixed(2);
+            let maxUser = unitDefinitions[propA][propA === 'T' ? u1 : u2].fromBase(maxBase).toFixed(2);
+            setError(`Property ${propNames[propA]} (${valA.toFixed(2)} in base units) is outside our thermodynamic saturation table boundary (${minUser} to ${maxUser} ${propA === 'T' ? u1 : u2}).`);
+            return;
+          }
+          finalT = finalRow.T;
+
+          if (propB === 'T' || propB === 'P') {
+            const expectedP = finalRow.P;
+            // Compare values to evaluate state phase
+            const tolerance = 0.015; // 1.5% pressure band considered saturated mixture state
+            const diffPercent = Math.abs(valB - expectedP) / expectedP;
+
+            if (diffPercent <= tolerance) {
+              statePhase = 'saturated';
+              warningMsg = `At the specified Temperature of ${finalT.toFixed(2)} °C, the computed saturation pressure is ${expectedP.toFixed(2)} kPa. Your inputs indicate two-phase saturation conditions. Reporting both Liquid and Vapor parameters.`;
+            } else if (valB > expectedP) {
+              statePhase = 'subcooled';
+              warningMsg = `Subcooled (Compressed) Liquid state. The system pressure is higher than the saturation pressure (${expectedP.toFixed(2)} kPa) at ${finalT.toFixed(2)}°C. Reporting only liquid properties.`;
+            } else {
+              statePhase = 'superheated';
+              warningMsg = `Superheated Vapor state. The system pressure is lower than the saturation pressure (${expectedP.toFixed(2)} kPa) at ${finalT.toFixed(2)}°C. Reporting only vapor properties.`;
+            }
+          } else {
+            // propB is h, s, u, or v
+            const fVal = finalRow[propB + 'f'];
+            const gVal = finalRow[propB + 'g'];
+
+            if (valB < fVal) {
+              statePhase = 'subcooled';
+              warningMsg = `Subcooled state. The specified ${propNames[propB]} is lower than the saturated liquid value (${fVal.toFixed(3)}) at ${finalT.toFixed(2)}°C. Reporting only liquid properties.`;
+            } else if (valB > gVal) {
+              statePhase = 'superheated';
+              warningMsg = `Superheated state. The specified ${propNames[propB]} is higher than the saturated vapor value (${gVal.toFixed(3)}) at ${finalT.toFixed(2)}°C. Reporting only vapor properties.`;
+            } else {
+              statePhase = 'saturated';
+            }
+          }
+        } 
+        // CASE 2: Both properties are state properties (h, s, u, v)
+        else {
+          let foundT = null;
+          let calculatedX = null;
+
+          for (let i = 0; i < satTable.length - 1; i++) {
+            const row1 = satTable[i];
+            const row2 = satTable[i+1];
+
+            const xA1 = (valA - row1[propA + 'f']) / (row1[propA + 'g'] - row1[propA + 'f']);
+            const xB1 = (valB - row1[propB + 'f']) / (row1[propB + 'g'] - row1[propB + 'f']);
+            const diff1 = xA1 - xB1;
+
+            const xA2 = (valA - row2[propA + 'f']) / (row2[propA + 'g'] - row2[propA + 'f']);
+            const xB2 = (valB - row2[propB + 'f']) / (row2[propB + 'g'] - row2[propB + 'f']);
+            const diff2 = xA2 - xB2;
+
+            if (diff1 * diff2 <= 0) {
+              foundT = interpolate(0, diff1, diff2, row1.T, row2.T);
+              calculatedX = interpolate(0, diff1, diff2, xA1, xA2);
+              break;
+            }
+          }
+
+          if (foundT === null) {
+            setError(`Unable to resolve a valid two-phase saturation mixture using the specified properties. This state may be highly superheated or subcooled beyond our saturation dome.`);
+            return;
+          }
+
+          finalT = foundT;
+          finalRow = getSatRowByProp('T', finalT);
+
+          if (calculatedX < 0) {
+            statePhase = 'subcooled';
+            warningMsg = 'Determined Subcooled state. Reporting only liquid properties.';
+          } else if (calculatedX > 1) {
+            statePhase = 'superheated';
+            warningMsg = 'Determined Superheated state. Reporting only vapor properties.';
+          } else {
+            statePhase = 'saturated';
+          }
+        }
+
+        if (!finalRow) {
+          setError('Calculation failed. State parameters could not be safely resolved.');
+          return;
+        }
+
+        setResult({
+          T: finalT,
+          P: finalRow.P,
+          statePhase: statePhase,
+          warningMsg: warningMsg,
+          satData: finalRow
+        });
+
+        // Synchronize output unit preferences to match input specifications
+        setOutputUnits(prev => ({
+          ...prev,
+          [p1]: u1,
+          [p2]: u2
+        }));
+      };
+
+      useEffect(() => {
+        performCalculation(prop1, val1, unit1, prop2, val2, unit2);
+      }, []);
+
+      const handlePropChange = (id, newProp) => {
+        if (id === 1) {
+          setProp1(newProp);
+          const defaultUnit = Object.keys(unitDefinitions[newProp])[0];
+          setUnit1(defaultUnit);
+          if (newProp === prop2) {
+            const remaining = Object.keys(priorities).filter(k => k !== newProp);
+            setProp2(remaining[0]);
+            setUnit2(Object.keys(unitDefinitions[remaining[0]])[0]);
+          }
+        } else {
+          setProp2(newProp);
+          const defaultUnit = Object.keys(unitDefinitions[newProp])[0];
+          setUnit2(defaultUnit);
+        }
+      };
+
+      const loadExample = (ex) => {
+        setProp1(ex.p1);
+        setVal1(ex.v1.toString());
+        setUnit1(ex.u1);
+        setProp2(ex.p2);
+        setVal2(ex.v2.toString());
+        setUnit2(ex.u2);
+        performCalculation(ex.p1, ex.v1, ex.u1, ex.p2, ex.v2, ex.u2);
+      };
+
+      const handleOutputUnitChange = (propKey, nextUnit) => {
+        setOutputUnits(prev => ({
+          ...prev,
+          [propKey]: nextUnit
+        }));
+      };
+
+      const renderDomePath = () => {
+        const pointsLiquid = satTable.map(row => {
+          const xCoord = (row.sf / 10) * 280 + 40;
+          const yCoord = 210 - (row.T / 400) * 180;
+          return `${xCoord},${yCoord}`;
+        });
+        const pointsVapor = [...satTable].reverse().map(row => {
+          const xCoord = (row.sg / 10) * 280 + 40;
+          const yCoord = 210 - (row.T / 400) * 180;
+          return `${xCoord},${yCoord}`;
+        });
+        return `M ${pointsLiquid.join(' L ')} L ${pointsVapor.join(' L ')}`;
+      };
+
+      return (
+        <div className="min-h-screen p-4 md:p-8">
+          <div className="max-w-6xl mx-auto space-y-6">
+            
+            {/* Header Banner */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex items-center space-x-4">
+              <div className="bg-blue-100 p-3 rounded-xl text-blue-600 shrink-0">
+                <Beaker size={32} />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-slate-900">Thermodynamic Steam Table Calculator</h1>
+                <p className="text-slate-500 text-sm mt-1">
+                  Select specifying values. Evaluates subcooled liquid, superheated vapor, and saturated liquid/vapor boundaries.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              
+              {/* Configuration Column */}
+              <div className="lg:col-span-4 space-y-6">
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+                  <h2 className="text-lg font-semibold mb-5 flex items-center text-slate-800">
+                    <Calculator className="w-5 h-5 mr-2 text-blue-500"/> Define System State
+                  </h2>
+                  
+                  <div className="space-y-5">
+                    {/* Specification 1 */}
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">Property Specification 1</label>
+                      <div className="grid grid-cols-1 gap-2">
+                        <select 
+                          className="w-full rounded-lg border-slate-300 border p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm font-semibold text-slate-700"
+                          value={prop1}
+                          onChange={(e) => handlePropChange(1, e.target.value)}
+                        >
+                          {Object.entries(propNames).map(([key, name]) => (
+                            <option key={key} value={key}>{name} ({key})</option>
+                          ))}
+                        </select>
+                        
+                        <div className="grid grid-cols-5 gap-1.5">
+                          <input 
+                            type="number"
+                            step="any"
+                            className="col-span-3 rounded-lg border-slate-300 border p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            value={val1}
+                            onChange={(e) => setVal1(e.target.value)}
+                            placeholder="Value"
+                          />
+                          <select
+                            className="col-span-2 rounded-lg border-slate-300 border p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-xs font-mono text-slate-700"
+                            value={unit1}
+                            onChange={(e) => setUnit1(e.target.value)}
+                          >
+                            {Object.keys(unitDefinitions[prop1]).map(u => (
+                              <option key={u} value={u}>{u}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Specification 2 */}
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500">Property Specification 2</label>
+                      <div className="grid grid-cols-1 gap-2">
+                        <select 
+                          className="w-full rounded-lg border-slate-300 border p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm font-semibold text-slate-700"
+                          value={prop2}
+                          onChange={(e) => handlePropChange(2, e.target.value)}
+                        >
+                          {Object.entries(propNames)
+                            .filter(([key]) => key !== prop1)
+                            .map(([key, name]) => (
+                              <option key={key} value={key}>{name} ({key})</option>
+                          ))}
+                        </select>
+                        
+                        <div className="grid grid-cols-5 gap-1.5">
+                          <input 
+                            type="number"
+                            step="any"
+                            className="col-span-3 rounded-lg border-slate-300 border p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            value={val2}
+                            onChange={(e) => setVal2(e.target.value)}
+                            placeholder="Value"
+                          />
+                          <select
+                            className="col-span-2 rounded-lg border-slate-300 border p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-xs font-mono text-slate-700"
+                            value={unit2}
+                            onChange={(e) => setUnit2(e.target.value)}
+                          >
+                            {Object.keys(unitDefinitions[prop2]).map(u => (
+                              <option key={u} value={u}>{u}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <button 
+                      onClick={() => performCalculation(prop1, val1, unit1, prop2, val2, unit2)}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition-colors shadow-sm mt-2"
+                    >
+                      Solve System State
+                    </button>
+                  </div>
+                </div>
+
+                {/* Presets */}
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+                  <h2 className="text-sm font-semibold mb-3 text-slate-700 uppercase tracking-wider flex items-center">
+                    <HelpCircle className="w-4 h-4 mr-1.5 text-blue-500"/> Presets
+                  </h2>
+                  <div className="space-y-1 font-medium">
+                    {examples.map((ex, idx) => (
+                      <button 
+                        key={idx}
+                        onClick={() => loadExample(ex)}
+                        className="w-full text-left px-3 py-2 text-xs text-slate-600 hover:bg-slate-50 border border-transparent hover:border-slate-200 rounded-lg transition-colors flex justify-between items-center group"
+                      >
+                        <span>{ex.label}</span>
+                        <span className="text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity text-[10px]">Load &rarr;</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Results Column */}
+              <div className="lg:col-span-8 space-y-6">
+                {error && (
+                  <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-xl flex items-start shadow-sm">
+                    <AlertCircle className="w-5 h-5 text-red-500 mr-3 mt-0.5 shrink-0" />
+                    <p className="text-sm text-red-800">{error}</p>
+                  </div>
+                )}
+
+                {result && (
+                  <div className="space-y-6">
+                    
+                    {/* State Overview Header banner */}
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-6 bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+                      <div className="md:col-span-7 flex flex-col justify-between space-y-4">
+                        <div>
+                          <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Identified State Phase</span>
+                          <h3 className="text-2xl font-black text-slate-900 mt-1 flex items-center capitalize">
+                            {result.statePhase === 'saturated' ? (
+                              <CheckCircle2 className="w-6 h-6 text-emerald-500 mr-2 shrink-0" />
+                            ) : (
+                              <AlertCircle className="w-6 h-6 text-amber-500 mr-2 shrink-0" />
+                            )}
+                            {result.statePhase} Mixture / State
+                          </h3>
+                        </div>
+
+                        <p className="text-sm text-slate-600 leading-relaxed">
+                          {result.warningMsg || `System successfully solved at saturation coordinates.`}
+                        </p>
+                      </div>
+
+                      {/* SVG T-s Saturation Curve Visualizer */}
+                      <div className="md:col-span-5 bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col items-center justify-center">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 font-mono">T-s (Entropy) Diagram</span>
+                        <svg viewBox="0 0 350 240" className="w-full h-auto max-w-[240px]">
+                          <line x1="40" y1="210" x2="320" y2="210" stroke="#cbd5e1" strokeWidth="1" />
+                          <line x1="40" y1="30" x2="40" y2="210" stroke="#cbd5e1" strokeWidth="1" />
+                          
+                          {/* Dome boundary */}
+                          <path d={renderDomePath()} fill="#eff6ff" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" />
+                          
+                          {/* Saturated Tie Line / Single Point Indicators */}
+                          {result.T && (
+                            (() => {
+                              const yY = 210 - (result.T / 400) * 180;
+                              const sf = result.satData ? result.satData.sf : 0;
+                              const sg = result.satData ? result.satData.sg : 10;
+                              const xF = (sf / 10) * 280 + 40;
+                              const xG = (sg / 10) * 280 + 40;
+                              
+                              if (result.statePhase === 'saturated') {
+                                return (
+                                  <React.Fragment>
+                                    <line x1={xF} y1={yY} x2={xG} y2={yY} stroke="#f43f5e" strokeWidth="2" />
+                                    <circle cx={xF} cy={yY} r="4" fill="#3b82f6" stroke="#fff" strokeWidth="1" />
+                                    <circle cx={xG} cy={yY} r="4" fill="#ef4444" stroke="#fff" strokeWidth="1" />
+                                  </React.Fragment>
+                                );
+                              } else if (result.statePhase === 'subcooled') {
+                                return (
+                                  <g>
+                                    <circle cx={xF} cy={yY} r="6" fill="#2563eb" className="animate-ping" opacity="0.4" />
+                                    <circle cx={xF} cy={yY} r="4" fill="#2563eb" stroke="#fff" strokeWidth="1.5" />
+                                  </g>
+                                );
+                              } else {
+                                return (
+                                  <g>
+                                    <circle cx={xG} cy={yY} r="6" fill="#dc2626" className="animate-ping" opacity="0.4" />
+                                    <circle cx={xG} cy={yY} r="4" fill="#dc2626" stroke="#fff" strokeWidth="1.5" />
+                                  </g>
+                                );
+                              }
+                            })()
+                          )}
+
+                          <text x="180" y="235" textAnchor="middle" fontSize="10" fill="#64748b" className="font-mono">Entropy (s)</text>
+                          <text x="12" y="120" textAnchor="middle" fontSize="10" fill="#64748b" transform="rotate(-90 12 120)" className="font-mono">Temp (T)</text>
+                          <text x="210" y="55" fontSize="9" fill="#94a3b8" className="italic font-sans">Saturation Dome</text>
+                        </svg>
+                      </div>
+                    </div>
+
+                    {/* Single State Identifiers (T & P) */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <SinglePropCard 
+                        label="Temperature (T)" 
+                        baseValue={result.T} 
+                        propKey="T"
+                        unit={outputUnits.T}
+                        icon={<Thermometer className="w-4 h-4 text-rose-500" />}
+                        decimals={2}
+                        onUnitChange={handleOutputUnitChange}
+                      />
+                      <SinglePropCard 
+                        label="Pressure (P)" 
+                        baseValue={result.P} 
+                        propKey="P"
+                        unit={outputUnits.P}
+                        icon={<Gauge className="w-4 h-4 text-sky-500" />}
+                        decimals={2}
+                        onUnitChange={handleOutputUnitChange}
+                      />
+                    </div>
+
+                    {/* Multiphase Property Column Display */}
+                    <div className="space-y-4">
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Phase Thermodynamic Quantities</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <PropCard 
+                          label="Specific Volume (v)"
+                          fVal={result.satData.vf}
+                          gVal={result.satData.vg}
+                          propKey="v"
+                          unit={outputUnits.v}
+                          decimals={5}
+                          statePhase={result.statePhase}
+                          onUnitChange={handleOutputUnitChange}
+                        />
+                        <PropCard 
+                          label="Internal Energy (u)"
+                          fVal={result.satData.uf}
+                          gVal={result.satData.ug}
+                          propKey="u"
+                          unit={outputUnits.u}
+                          decimals={2}
+                          statePhase={result.statePhase}
+                          onUnitChange={handleOutputUnitChange}
+                        />
+                        <PropCard 
+                          label="Enthalpy (h)"
+                          fVal={result.satData.hf}
+                          gVal={result.satData.hg}
+                          propKey="h"
+                          unit={outputUnits.h}
+                          decimals={2}
+                          statePhase={result.statePhase}
+                          onUnitChange={handleOutputUnitChange}
+                        />
+                        <PropCard 
+                          label="Entropy (s)"
+                          fVal={result.satData.sf}
+                          gVal={result.satData.sg}
+                          propKey="s"
+                          unit={outputUnits.s}
+                          decimals={4}
+                          statePhase={result.statePhase}
+                          onUnitChange={handleOutputUnitChange}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Saturation Row Info Drawer */}
+                    <div className="mt-6 bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                      <button 
+                        className="w-full bg-slate-50 p-4 border-b border-slate-100 flex justify-between items-center hover:bg-slate-100 transition-colors focus:outline-none" 
+                        onClick={() => setShowSatData(!showSatData)}
+                      >
+                        <span className="font-semibold text-slate-700 flex items-center text-sm">
+                          <BookOpen className="w-4 h-4 mr-2 text-slate-500"/> 
+                          Underlying Reference Saturation Boundary Data @ {result.T.toFixed(2)} °C
+                        </span>
+                        <span className="text-blue-600 text-xs font-bold">{showSatData ? 'Hide Saturation Values' : 'View Saturation Values'}</span>
+                      </button>
+                      
+                      {showSatData && (
+                        <div className="p-5 grid grid-cols-2 sm:grid-cols-4 gap-y-6 gap-x-4 border-t border-slate-50 bg-white">
+                          <DataPoint label="vf (m³/kg)" value={result.satData.vf} dec={6} />
+                          <DataPoint label="vg (m³/kg)" value={result.satData.vg} dec={4} />
+                          <DataPoint label="uf (kJ/kg)" value={result.satData.uf} dec={2} />
+                          <DataPoint label="ug (kJ/kg)" value={result.satData.ug} dec={2} />
+                          <DataPoint label="hf (kJ/kg)" value={result.satData.hf} dec={2} />
+                          <DataPoint label="hg (kJ/kg)" value={result.satData.hg} dec={2} />
+                          <DataPoint label="sf (kJ/kg·K)" value={result.satData.sf} dec={4} />
+                          <DataPoint label="sg (kJ/kg·K)" value={result.satData.sg} dec={4} />
+                        </div>
+                      )}
+                    </div>
+
+                  </div>
+                )}
+              </div>
+
+            </div>
+
+            {/* Citations Footer */}
+            <div className="pt-8 text-center text-xs text-slate-400 max-w-3xl mx-auto space-y-2">
+              <p>
+                <strong>Data Source Citation:</strong> Baseline thermodynamic properties are derived from standard saturation tables corresponding to the <em>IAPWS-IF97 Industrial Formulation for the Thermodynamic Properties of Water and Steam</em> (International Association for the Properties of Water and Steam).
+              </p>
+              <p>
+                <strong>Computational Note:</strong> Solver utilizes continuous piecewise linear interpolation on the standard IAPWS-IF97 discretization range. State variables calculated outside the boundary limits are flagged as subcooled/superheated and are physically outside the two-phase saturation dome bounds.
+              </p>
+            </div>
+
+          </div>
+        </div>
+      );
+    }
+
+    const SinglePropCard = ({ label, baseValue, propKey, unit, icon, decimals = 2, onUnitChange }) => {
+      let displayValue = "N/A";
+      if (baseValue !== null && baseValue !== undefined) {
+        const converted = unitDefinitions[propKey][unit].fromBase(baseValue);
+        displayValue = Number(converted).toFixed(decimals);
+      }
+
+      return (
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-slate-50 rounded-lg">{icon}</div>
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">{label}</span>
+              <span className="text-xl font-black text-slate-800 tracking-tight">{displayValue}</span>
+            </div>
+          </div>
+          
+          <select
+            className="text-[11px] font-bold bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded px-1.5 py-1 outline-none cursor-pointer text-slate-600 transition-colors"
+            value={unit}
+            onChange={(e) => onUnitChange(propKey, e.target.value)}
+          >
+            {Object.keys(unitDefinitions[propKey]).map(u => (
+              <option key={u} value={u}>{u}</option>
+            ))}
+          </select>
+        </div>
+      );
+    };
+
+    const PropCard = ({ label, fVal, gVal, propKey, unit, statePhase, decimals = 2, onUnitChange }) => {
+      const showLiquid = statePhase === 'saturated' || statePhase === 'subcooled';
+      const showVapor = statePhase === 'saturated' || statePhase === 'superheated';
+
+      const formatValue = (raw) => {
+        if (raw === null || raw === undefined) return 'N/A';
+        const converted = unitDefinitions[propKey][unit].fromBase(raw);
+        return Number(converted).toFixed(decimals);
+      };
+
+      return (
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{label}</span>
+            <select
+              className="text-[10px] font-bold bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded px-1.5 py-0.5 outline-none cursor-pointer text-slate-600 transition-colors"
+              value={unit}
+              onChange={(e) => onUnitChange(propKey, e.target.value)}
+            >
+              {Object.keys(unitDefinitions[propKey]).map(u => (
+                <option key={u} value={u}>{u}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            {/* Liquid Component */}
+            <div className={`flex flex-col ${!showLiquid ? 'opacity-30' : ''}`}>
+              <div className="flex items-center space-x-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Liquid (f)</span>
+              </div>
+              {showLiquid ? (
+                <div className="mt-1 flex items-baseline">
+                  <span className="text-lg font-black text-slate-800 tracking-tight">{formatValue(fVal)}</span>
+                  <span className="text-[10px] font-bold text-slate-400 ml-1 truncate">{unit}</span>
+                </div>
+              ) : (
+                <span className="text-sm font-semibold text-slate-400 mt-1 block italic">N/A (Superheated)</span>
+              )}
+            </div>
+
+            {/* Vapor Component */}
+            <div className={`flex flex-col border-l border-slate-100 pl-4 ${!showVapor ? 'opacity-30' : ''}`}>
+              <div className="flex items-center space-x-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Vapor (g)</span>
+              </div>
+              {showVapor ? (
+                <div className="mt-1 flex items-baseline">
+                  <span className="text-lg font-black text-slate-800 tracking-tight">{formatValue(gVal)}</span>
+                  <span className="text-[10px] font-bold text-slate-400 ml-1 truncate">{unit}</span>
+                </div>
+              ) : (
+                <span className="text-sm font-semibold text-slate-400 mt-1 block italic">N/A (Subcooled)</span>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const DataPoint = ({ label, value, dec }) => (
+      <div className="flex flex-col">
+        <span className="text-slate-500 text-xs font-medium mb-1">{label}</span>
+        <span className="font-mono text-xs text-slate-800 bg-slate-50 px-2.5 py-1 rounded border border-slate-200 w-fit">
+          {Number(value).toFixed(dec)}
+        </span>
+      </div>
+    );
+
+    // Render the App
+    const container = document.getElementById('root');
+    const root = ReactDOM.createRoot(container);
+    root.render(<SteamTableApp />);
+  </script>
+</body>
+</html>

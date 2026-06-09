@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thermodynamic Analysis of Air-Water Systems - Guided Inquiry</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @media print {
+      body {
+        background-color: white !important;
+        color: black !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .page-break {
+        page-break-before: always;
+        break-before: page;
+      }
+      .print-border {
+        border-color: #475569 !important;
+      }
+      .print-bg {
+        background-color: #f8fafc !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+    /* Stylized lines for handwritten answers */
+    .answer-line {
+      border-bottom: 1px dashed #94a3b8;
+      height: 1.8rem;
+      margin-top: 0.2rem;
+      margin-bottom: 0.8rem;
+    }
+    .answer-lines-double {
+      border-bottom: 1px dashed #94a3b8;
+      background-image: linear-gradient(to bottom, transparent 95%, #94a3b8 95%);
+      background-size: 100% 1.8rem;
+      line-height: 1.8rem;
+      height: 3.6rem;
+      margin-bottom: 0.8rem;
+    }
+    .answer-lines-triple {
+      border-bottom: 1px dashed #94a3b8;
+      background-image: linear-gradient(to bottom, transparent 95%, #94a3b8 95%);
+      background-size: 100% 1.8rem;
+      line-height: 1.8rem;
+      height: 5.4rem;
+      margin-bottom: 0.8rem;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-900 font-sans min-h-screen py-8 px-4 flex flex-col items-center">
+
+  <!-- Interactive Control Bar (Hidden on Print) -->
+  <div class="no-print w-full max-w-4xl bg-slate-900 text-slate-100 p-4 rounded-xl shadow-lg mb-6 flex flex-wrap items-center justify-between gap-4 border border-slate-800">
+    <div class="flex items-center gap-2">
+      <div class="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg">
+        <i data-lucide="printer" class="w-5 h-5"></i>
+      </div>
+      <div>
+        <h4 class="font-bold text-sm">Printable Activity Generator</h4>
+        <p class="text-[10px] text-slate-400">Save as PDF, print as A4, or open in Microsoft Word</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <button onclick="window.print()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow transition flex items-center gap-1.5">
+        <i data-lucide="file-down" class="w-4 h-4"></i> Export / Save as PDF
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Document Container -->
+  <article class="w-full max-w-[21cm] bg-white text-slate-900 p-10 md:p-14 shadow-2xl rounded-lg border border-slate-200 flex flex-col gap-6 print:border-none print:shadow-none print:p-0">
+    
+    <!-- Document Header -->
+    <header class="border-b-2 border-slate-900 pb-4">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
+        <span>Thermodynamics & HVAC Systems</span>
+        <span>Guided Inquiry Activity</span>
+      </div>
+      <h1 class="text-3xl font-extrabold text-slate-950 tracking-tight text-center sm:text-left">Thermodynamic Analysis of Air-Water Systems</h1>
+      <h2 class="text-lg font-bold text-slate-700 text-center sm:text-left mt-1">A Guided Inquiry Exploration of the Psychrometric Chart</h2>
+      
+      <!-- Student Name Block -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6 text-sm font-medium">
+        <div class="flex items-center gap-2">
+          <span class="text-slate-500">Name:</span>
+          <div class="flex-1 border-b border-slate-400 h-6"></div>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-slate-500">Date:</span>
+          <div class="flex-1 border-b border-slate-400 h-6"></div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Learning Objectives Box -->
+    <section class="print-bg bg-slate-50 border border-slate-300 rounded-lg p-5">
+      <h3 class="font-bold text-sm text-slate-900 uppercase tracking-wider mb-2 flex items-center gap-2">
+        <i data-lucide="bookmark-check" class="w-4 h-4 text-indigo-600 no-print"></i> Learning Objectives
+      </h3>
+      <ul class="list-disc list-inside text-sm text-slate-700 space-y-1.5 pl-1">
+        <li>Identify, read, and define the seven key thermodynamic properties represented on a psychrometric chart.</li>
+        <li>Determine the state point of moist air given any two independent properties.</li>
+        <li>Trace and analyze standard thermodynamic processes (heating, cooling, dehumidification, and adiabatic mixing).</li>
+        <li>Evaluate the impact of atmospheric pressure (elevation) on psychrometric properties.</li>
+        <li>Distinguish between saturated enthalpy ($h_{\text{sat}}$) and actual enthalpy using enthalpy correction curves ($\Delta h$).</li>
+      </ul>
+    </section>
+
+    <!-- Section 1 -->
+    <section class="flex flex-col gap-4">
+      <h2 class="text-xl font-bold text-indigo-900 border-b border-slate-200 pb-1 flex items-center gap-2">
+        1. Introduction: The Geometry of Air
+      </h2>
+      <p class="text-sm leading-relaxed text-slate-800">
+        A psychrometric chart is a graphical representation of the thermodynamic state of a mixture of dry air and water vapor. Under Gibbs' Phase Rule, a mixture of two gases can be completely specified by three independent intensive properties. If we fix the total pressure ($P$), we can plot any state point on a two-dimensional coordinate space using any two other independent variables.
+      </p>
+
+      <div class="mt-2">
+        <h4 class="font-bold text-sm text-slate-900 flex items-center gap-2">
+          <span class="bg-indigo-100 text-indigo-800 text-xs px-2 py-0.5 rounded-full">Task 1</span>
+          Orienting Yourself on the Grid
+        </h4>
+        <p class="text-xs text-slate-500 mt-1 mb-3">
+          Open the <strong>Psychrometric Chart Simulator</strong>. Set the elevation to <strong>0 m</strong> (Sea Level) and toggle the units to <strong>Metric (SI)</strong>. Locate the primary axes and boundary curves of the interactive plot, and answer the following:
+        </p>
+
+        <div class="space-y-4 text-sm">
+          <div>
+            <p class="font-medium text-slate-800">a. What thermodynamic property is mapped to the horizontal axis (Abscissa)? State its variable symbol and metric unit.</p>
+            <div class="answer-line"></div>
+          </div>
+          <div>
+            <p class="font-medium text-slate-800">b. What property is mapped to the vertical axis on the right side of the plot (Ordinate)? State its variable symbol and unit. Why is it scaled in g/kg of dry air instead of simply kg/kg?</p>
+            <div class="answer-lines-double"></div>
+          </div>
+          <div>
+            <p class="font-medium text-slate-800">c. Hover your cursor along the far-left boundary curve where Relative Humidity is exactly 100%. What is this curve called, and what physical transition does it represent?</p>
+            <div class="answer-lines-double"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Page Break -->
+    <div class="page-break"></div>
+
+    <!-- Section 2 -->
+    <section class="flex flex-col gap-4">
+      <h2 class="text-xl font-bold text-indigo-900 border-b border-slate-200 pb-1">
+        2. Essential Elements of the Chart
+      </h2>
+      <p class="text-sm leading-relaxed text-slate-800">
+        By using the interactive legend highlighting buttons at the bottom of the simulator, systematically hover over each curve type and analyze its trajectory.
+      </p>
+
+      <div>
+        <h4 class="font-bold text-sm text-slate-900 mb-3 flex items-center gap-2">
+          <span class="bg-indigo-100 text-indigo-800 text-xs px-2 py-0.5 rounded-full">Task 2</span>
+          Tracing and Defining State Properties
+        </h4>
+        <p class="text-xs text-slate-500 mb-3">
+          Fill out the table below to catalog the seven primary moist air state variables, their geometric representations, and their behaviors on the chart.
+        </p>
+
+        <!-- Task Table 1 -->
+        <div class="overflow-x-auto border border-slate-300 rounded-lg">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="bg-slate-100 border-b border-slate-300 font-semibold text-slate-700">
+                <th class="p-3">Thermodynamic Property</th>
+                <th class="p-3">Symbol</th>
+                <th class="p-3">Metric Unit</th>
+                <th class="p-3">Orientation of Constant-Value Lines</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200">
+              <tr>
+                <td class="p-3 font-medium text-slate-800">Dry Bulb Temperature</td>
+                <td class="p-3 font-mono">T<sub>db</sub></td>
+                <td class="p-3">°C</td>
+                <td class="p-3 text-slate-400 italic">e.g., Straight vertical lines...</td>
+              </tr>
+              <tr>
+                <td class="p-3 font-medium text-slate-800">Humidity Ratio</td>
+                <td class="p-3 font-mono">W</td>
+                <td class="p-3">g/kg<sub>da</sub></td>
+                <td class="p-3"><div class="border-b border-dashed border-slate-400 h-4 w-full"></div></td>
+              </tr>
+              <tr>
+                <td class="p-3 font-medium text-slate-800">Relative Humidity</td>
+                <td class="p-3 font-mono">φ (or RH)</td>
+                <td class="p-3">%</td>
+                <td class="p-3"><div class="border-b border-dashed border-slate-400 h-4 w-full"></div></td>
+              </tr>
+              <tr>
+                <td class="p-3 font-medium text-slate-800">Wet Bulb Temperature</td>
+                <td class="p-3 font-mono">T<sub>wb</sub></td>
+                <td class="p-3">°C</td>
+                <td class="p-3"><div class="border-b border-dashed border-slate-400 h-4 w-full"></div></td>
+              </tr>
+              <tr>
+                <td class="p-3 font-medium text-slate-800">Dew Point Temperature</td>
+                <td class="p-3 font-mono">T<sub>dp</sub></td>
+                <td class="p-3">°C</td>
+                <td class="p-3"><div class="border-b border-dashed border-slate-400 h-4 w-full"></div></td>
+              </tr>
+              <tr>
+                <td class="p-3 font-medium text-slate-800">Specific Enthalpy</td>
+                <td class="p-3 font-mono">h</td>
+                <td class="p-3">kJ/kg<sub>da</sub></td>
+                <td class="p-3"><div class="border-b border-dashed border-slate-400 h-4 w-full"></div></td>
+              </tr>
+              <tr>
+                <td class="p-3 font-medium text-slate-800">Specific Volume</td>
+                <td class="p-3 font-mono">v</td>
+                <td class="p-3">m³/kg<sub>da</sub></td>
+                <td class="p-3"><div class="border-b border-dashed border-slate-400 h-4 w-full"></div></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="mt-2 space-y-4">
+        <h3 class="font-bold text-sm text-slate-900 border-b border-slate-100 pb-1">Inquiry Questions: Physical Intuition</h3>
+        
+        <div class="text-sm">
+          <p class="font-medium text-slate-800">1. Why do the constant specific volume lines slope downwards to the right? As Dry Bulb Temperature increases at a constant Humidity Ratio, what happens to specific volume, and how does this match your understanding of the Ideal Gas Law?</p>
+          <div class="answer-lines-double"></div>
+        </div>
+
+        <div class="text-sm">
+          <p class="font-medium text-slate-800">2. Observe the wet-bulb temperature lines (T<sub>wb</sub>) and the enthalpy lines (h). They are nearly, but not *exactly*, parallel.</p>
+          <div class="pl-4 space-y-4 mt-2">
+            <div>
+              <p class="text-slate-800"><span class="font-semibold">i.</span> Turn on the <strong>Enthalpy Correction (Δh Deviation)</strong> curves using the legend. Describe what these curves represent.</p>
+              <div class="answer-line"></div>
+            </div>
+            <div>
+              <p class="text-slate-800"><span class="font-semibold">ii.</span> Choose a state point of T<sub>db</sub> = 35°C and RH = 20%. Read the Saturated Enthalpy on the diagonal scale, and use the hover reticle to find the actual enthalpy and the deviation (Δh). Why is there a difference?</p>
+              <div class="answer-lines-double"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Page Break -->
+    <div class="page-break"></div>
+
+    <!-- Section 3 -->
+    <section class="flex flex-col gap-4">
+      <h2 class="text-xl font-bold text-indigo-900 border-b border-slate-200 pb-1">
+        3. Locating Moist Air States
+      </h2>
+      
+      <div class="print-bg bg-slate-50 border border-slate-300 rounded-lg p-4 text-sm text-slate-800">
+        <strong>Rule of Two Properties:</strong> To find any state point on the chart, you must know the atmospheric pressure ($P$) and <strong>at least two</strong> other independent intensive thermodynamic properties.
+      </div>
+
+      <div>
+        <h4 class="font-bold text-sm text-slate-900 mb-3 flex items-center gap-2">
+          <span class="bg-indigo-100 text-indigo-800 text-xs px-2 py-0.5 rounded-full">Task 3</span>
+          Determining States at Sea Level
+        </h4>
+        <p class="text-xs text-slate-500 mb-3">
+          Set the elevation to <strong>0 m</strong> (P = 101.3 kPa). Use the simulator's input panel or click-to-plot capability to determine the full thermodynamic properties of the following air states:
+        </p>
+        <ul class="list-none text-xs text-slate-700 space-y-1 mb-4 pl-1">
+          <li>• <strong>State 1 (Warm & Moist room air):</strong> T<sub>db</sub> = 26.0°C, φ = 60%</li>
+          <li>• <strong>State 2 (Cooler coil output air):</strong> T<sub>db</sub> = 12.0°C, T<sub>wb</sub> = 10.0°C</li>
+        </ul>
+
+        <!-- Task Table 2 -->
+        <div class="overflow-x-auto border border-slate-300 rounded-lg">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="bg-slate-100 border-b border-slate-300 font-semibold text-slate-700">
+                <th class="p-3">State</th>
+                <th class="p-3">T<sub>db</sub> (°C)</th>
+                <th class="p-3">φ (%)</th>
+                <th class="p-3">W (g/kg)</th>
+                <th class="p-3">T<sub>wb</sub> (°C)</th>
+                <th class="p-3">T<sub>dp</sub> (°C)</th>
+                <th class="p-3">h (kJ/kg)</th>
+                <th class="p-3">v (m³/kg)</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200">
+              <tr>
+                <td class="p-3 font-bold text-indigo-900">State 1</td>
+                <td class="p-3">26.0</td>
+                <td class="p-3">60.0</td>
+                <td class="p-3 italic text-slate-400">________</td>
+                <td class="p-3 italic text-slate-400">________</td>
+                <td class="p-3 italic text-slate-400">________</td>
+                <td class="p-3 italic text-slate-400">________</td>
+                <td class="p-3 italic text-slate-400">________</td>
+              </tr>
+              <tr>
+                <td class="p-3 font-bold text-amber-600">State 2</td>
+                <td class="p-3">12.0</td>
+                <td class="p-3 italic text-slate-400">________</td>
+                <td class="p-3 italic text-slate-400">________</td>
+                <td class="p-3">10.0</td>
+                <td class="p-3 italic text-slate-400">________</td>
+                <td class="p-3 italic text-slate-400">________</td>
+                <td class="p-3 italic text-slate-400">________</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="mt-2 space-y-4">
+        <h4 class="font-bold text-sm text-slate-900 flex items-center gap-2">
+          <span class="bg-indigo-100 text-indigo-800 text-xs px-2 py-0.5 rounded-full">Task 4</span>
+          The Impact of Elevation & Pressure
+        </h4>
+        <p class="text-xs text-slate-500">
+          Now, change the elevation in the top bar from <strong>0 m</strong> to <strong>2,000 m</strong> (representative of a high-altitude city like Mexico City).
+        </p>
+
+        <div class="space-y-4 text-sm">
+          <div>
+            <p class="font-medium text-slate-800">1. What is the new atmospheric pressure reported by the simulator?</p>
+            <div class="flex items-center gap-2 mt-1">
+              <span class="text-slate-500 text-xs">P = </span>
+              <div class="border-b border-dashed border-slate-400 h-6 w-32"></div>
+              <span class="text-slate-500 text-xs">kPa</span>
+            </div>
+          </div>
+
+          <div>
+            <p class="font-medium text-slate-800">2. Keep the temperature of State 1 fixed at T<sub>db</sub> = 26.0°C and Humidity Ratio fixed at W = 10.0 g/kg. Switch the simulator calculation type to "Dry Bulb + Humidity Ratio" and enter those parameters. Report the new properties:</p>
+            <div class="grid grid-cols-2 gap-4 mt-2 pl-4 text-xs font-mono">
+              <div class="flex items-center gap-2">
+                <span>• Relative Humidity (φ):</span>
+                <div class="border-b border-dashed border-slate-400 h-6 flex-1"></div>
+                <span>%</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span>• Enthalpy (h):</span>
+                <div class="border-b border-dashed border-slate-400 h-6 flex-1"></div>
+                <span>kJ/kg</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span>• Dew Point Temp (T<sub>dp</sub>):</span>
+                <div class="border-b border-dashed border-slate-400 h-6 flex-1"></div>
+                <span>°C</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span>• Specific Volume (v):</span>
+                <div class="border-b border-dashed border-slate-400 h-6 flex-1"></div>
+                <span>m³/kg</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <p class="font-medium text-slate-800">3. Explain physically why Specific Volume ($v$) and Relative Humidity ($\phi$) shifted when you reduced the total air pressure, even though temperature and absolute moisture mass fraction remained identical.</p>
+            <div class="answer-lines-double"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Page Break -->
+    <div class="page-break"></div>
+
+    <!-- Section 4 -->
+    <section class="flex flex-col gap-4">
+      <h2 class="text-xl font-bold text-indigo-900 border-b border-slate-200 pb-1">
+        4. HVAC Process Analysis
+      </h2>
+      <p class="text-sm leading-relaxed text-slate-800">
+        By selecting different modes under the <strong>Process Simulator</strong> menu, trace the path lines connecting State 1 and State 2 and apply conservation laws to evaluate air treatments.
+      </p>
+
+      <div class="space-y-4">
+        <h4 class="font-bold text-sm text-slate-900 flex items-center gap-2">
+          <span class="bg-indigo-100 text-indigo-800 text-xs px-2 py-0.5 rounded-full">Task 5</span>
+          Sensible Heating and Cooling
+        </h4>
+        <p class="text-xs text-slate-500">
+          Set elevation to <strong>0 m</strong>. Switch the process simulator to <strong>Sensible Heating / Cooling</strong>. Configure State 1 to T<sub>db</sub> = 15.0°C, φ = 50%. Configure State 2 to T<sub>db</sub> = 35.0°C.
+        </p>
+
+        <div class="space-y-4 text-sm">
+          <div>
+            <p class="font-medium text-slate-800">1. Describe the geometry of the process path line on the chart. What is the slope?</p>
+            <div class="answer-line"></div>
+          </div>
+          <div>
+            <p class="font-medium text-slate-800">2. Explain why the Humidity Ratio ($W$) and Dew Point Temp ($T_{dp}$) must remain perfectly constant during a purely sensible thermal process.</p>
+            <div class="answer-lines-double"></div>
+          </div>
+          <div>
+            <p class="font-medium text-slate-800">3. Relative humidity changed from ________% down to ________%. Why did the air become "drier" when no moisture was removed?</p>
+            <div class="answer-lines-double"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-2 space-y-4">
+        <h4 class="font-bold text-sm text-slate-900 flex items-center gap-2">
+          <span class="bg-indigo-100 text-indigo-800 text-xs px-2 py-0.5 rounded-full">Task 6</span>
+          Adiabatic Humidification (Evaporative Cooling)
+        </h4>
+        <p class="text-xs text-slate-500">
+          Switch the simulator to <strong>Adiabatic Humidification</strong>. Configure State 1 to a hot, dry climate state of T<sub>db</sub> = 38.0°C, φ = 15%. Run the evaporative cooling process down to a comfort level of T<sub>db</sub> = 24.0°C.
+        </p>
+
+        <div class="space-y-4 text-sm">
+          <div>
+            <p class="font-medium text-slate-800">1. Trace the process direction. What curve or property line does this process closely follow? Why?</p>
+            <div class="answer-lines-double"></div>
+          </div>
+          <div>
+            <p class="font-medium text-slate-800">2. Find the resulting Humidity Ratio at State 2: W<sub>2</sub> = _________ g/kg. Calculate the total amount of water vapor added to each kilogram of dry air:</p>
+            <div class="flex items-center gap-2 mt-1 font-mono text-xs">
+              <span>ΔW = W₂ - W₁ = </span>
+              <div class="border-b border-dashed border-slate-400 h-6 w-32"></div>
+              <span>g of water / kg of dry air</span>
+            </div>
+          </div>
+          <div>
+            <p class="font-medium text-slate-800">3. What is the absolute lowest temperature (limit of cooling performance) achievable by an evaporative cooler operating on this incoming air? What thermodynamic name is given to this limit?</p>
+            <div class="answer-line"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Page Break -->
+    <div class="page-break"></div>
+
+    <!-- Section 4 Continued -->
+    <section class="flex flex-col gap-4">
+      <div class="space-y-4">
+        <h4 class="font-bold text-sm text-slate-900 flex items-center gap-2">
+          <span class="bg-indigo-100 text-indigo-800 text-xs px-2 py-0.5 rounded-full">Task 7</span>
+          Stream Mixing (Mass & Energy Balancing)
+        </h4>
+        <p class="text-xs text-slate-500">
+          Switch the simulator to <strong>Adiabatic Mixing of Air Streams</strong>. Set State 1 (Return Air) to T<sub>db</sub> = 25.0°C, φ = 50%. Set State 2 (Outside Air) to T<sub>db</sub> = 5.0°C, φ = 80%.
+        </p>
+
+        <div class="space-y-4 text-sm">
+          <div>
+            <p class="font-medium text-slate-800">1. Observe the resulting State 3 (Mixture) on the graph. Explain geometrically where State 3 resides relative to the points of State 1 and State 2.</p>
+            <div class="answer-line"></div>
+          </div>
+          <div>
+            <p class="font-medium text-slate-800">2. Adjust the <strong>Stream 1 Mass Ratio</strong> slider to 60% (Return Air) and 40% (Outside Air). Report the calculated properties of the mixed air entering our handler:</p>
+            <div class="grid grid-cols-3 gap-2 mt-2 font-mono text-xs">
+              <div class="flex items-center gap-1.5">
+                <span>• T<sub>db,3</sub>:</span>
+                <div class="border-b border-dashed border-slate-400 h-6 flex-1"></div>
+                <span>°C</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span>• W<sub>3</sub>:</span>
+                <div class="border-b border-dashed border-slate-400 h-6 flex-1"></div>
+                <span>g/kg</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span>• h<sub>3</sub>:</span>
+                <div class="border-b border-dashed border-slate-400 h-6 flex-1"></div>
+                <span>kJ/kg</span>
+              </div>
+            </div>
+          </div>
+          <div>
+            <p class="font-medium text-slate-800">3. Prove mathematically using mass and energy balances that: T<sub>db,3</sub> = r₁T<sub>db,1</sub> + r₂T<sub>db,2</sub> and h₃ = r₁h₁ + r₂h₂. Show your equations and calculations. Do they match the simulator's output?</p>
+            <div class="answer-lines-triple"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 5 -->
+    <section class="flex flex-col gap-4 mt-2">
+      <h2 class="text-xl font-bold text-indigo-900 border-b border-slate-200 pb-1">
+        5. Synthesis Challenge: Designing Comfort
+      </h2>
+      <p class="text-sm leading-relaxed text-slate-800">
+        Imagine you are designing the cooling system for an office building in Denver, Colorado (elevation ≈ 1,600 m). The indoor space must be maintained at T<sub>db</sub> = 22.0°C and φ = 50%. The outdoor air is at T<sub>db</sub> = 34.0°C and T<sub>wb</sub> = 14.0°C (hot, dry alpine climate).
+      </p>
+
+      <div class="space-y-4 text-sm">
+        <div>
+          <p class="font-medium text-slate-800">1. Determine the outdoor relative humidity (φ<sub>out</sub>) and specific volume (v<sub>out</sub>) at Denver's altitude.</p>
+          <div class="grid grid-cols-2 gap-4 mt-2 pl-4 text-xs font-mono">
+            <div class="flex items-center gap-2">
+              <span>• φ<sub>out</sub>:</span>
+              <div class="border-b border-dashed border-slate-400 h-6 flex-1"></div>
+              <span>%</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span>• v<sub>out</sub>:</span>
+              <div class="border-b border-dashed border-slate-400 h-6 flex-1"></div>
+              <span>m³/kg</span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <p class="font-medium text-slate-800">2. Based on the low outdoor wet-bulb temperature, can an indirect evaporative cooler alone handle the cooling load to reach 22°C indoors without mechanical refrigeration? Defend your design decision using chart properties.</p>
+          <div class="answer-lines-triple"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-200 pt-4 mt-8 flex justify-between items-center text-[10px] text-slate-400">
+      <span>Psychrometric Chart System Simulator Activity</span>
+      <span>Denver Office HVAC Design Case Study</span>
+    </footer>
+
+  </article>
+
+  <script>
+    // Initialize Lucide Icons
+    lucide.createIcons();
+  </script>
+</body>
+</html>

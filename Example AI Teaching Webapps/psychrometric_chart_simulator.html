@@ -1,0 +1,2249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Psychrometric Chart & Air-Water System Simulator</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    /* Custom thin scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #1e293b;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #475569;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #64748b;
+    }
+    /* Simple custom styles */
+    .canvas-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      min-height: 520px;
+    }
+    canvas {
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+
+  <!-- Header -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-40 px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+    <div class="flex items-center gap-3">
+      <div class="p-2 bg-indigo-600/20 text-indigo-400 rounded-lg border border-indigo-500/30">
+        <i data-lucide="wind" class="w-6 h-6"></i>
+      </div>
+      <div>
+        <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+          Psychrometric Chart Analyzer
+          <span class="text-xs font-semibold px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">Standard Atmosphere</span>
+        </h1>
+        <p class="text-xs text-slate-400">Thermodynamic air-water system analysis and process simulator</p>
+      </div>
+    </div>
+
+    <!-- Top Controls -->
+    <div class="flex flex-wrap items-center gap-4">
+      <!-- Elevation / Pressure Input -->
+      <div class="flex items-center bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 gap-2 text-sm">
+        <span class="text-slate-400 flex items-center gap-1">
+          <i data-lucide="mountain" class="w-4 h-4"></i> Elevation:
+        </span>
+        <input type="number" id="elevationInput" value="0" min="-400" max="8000" class="w-20 bg-transparent text-white focus:outline-none font-mono text-right" />
+        <span class="text-slate-500 font-medium" id="elevationUnit">m</span>
+        <div class="h-4 w-[1px] bg-slate-800 mx-1"></div>
+        <span class="text-slate-400 font-mono text-xs" id="pressureText">101.3 kPa</span>
+      </div>
+
+      <!-- Unit Selector Toggle -->
+      <div class="flex bg-slate-950 border border-slate-800 rounded-lg p-1">
+        <button id="unitMetricBtn" class="px-3 py-1 rounded text-xs font-semibold transition bg-indigo-600 text-white">
+          Metric (SI)
+        </button>
+        <button id="unitImperialBtn" class="px-3 py-1 rounded text-xs font-semibold transition text-slate-400 hover:text-slate-200">
+          Imperial (I-P)
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 overflow-hidden">
+    
+    <!-- Chart Section (Col: 8) -->
+    <section class="lg:col-span-8 flex flex-col gap-4 bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl">
+      <!-- Chart Controls / Info -->
+      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-3">
+          <span class="text-sm font-semibold text-slate-300">Active View:</span>
+          <div class="flex gap-2">
+            <button id="viewInteractive" class="px-3 py-1 rounded-full text-xs font-medium bg-slate-800 text-indigo-400 border border-indigo-500/20 shadow-inner flex items-center gap-1">
+              <span class="w-2 h-2 rounded-full bg-indigo-500"></span> Live Interactive View
+            </button>
+            <div class="px-3 py-1 rounded-full text-xs font-medium bg-slate-800/50 text-slate-400 border border-slate-800 flex items-center gap-1">
+              <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Click & Drag to Move/Pan
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center gap-4 text-xs text-slate-400">
+          <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-sky-500"></span> State 1</div>
+          <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-amber-500"></span> State 2</div>
+          <div class="flex items-center gap-1.5 hide-unless-mixing hidden"><span class="w-3 h-3 rounded-full bg-emerald-500"></span> Mixture 3</div>
+        </div>
+      </div>
+
+      <!-- Real-time Crosshair HUD Panel -->
+      <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 bg-slate-950 border border-slate-800/80 p-3 rounded-lg text-xs" id="hudPanel">
+        <div class="border-r border-slate-800/50 pr-2">
+          <p class="text-slate-400 font-medium">Dry Bulb (T<sub>db</sub>)</p>
+          <p class="text-lg font-bold font-mono text-white" id="hudTdb">--</p>
+        </div>
+        <div class="border-r border-slate-800/50 pr-2 pl-1">
+          <p class="text-slate-400 font-medium">Relative Hum (RH)</p>
+          <p class="text-lg font-bold font-mono text-teal-400" id="hudRH">--</p>
+        </div>
+        <div class="border-r border-slate-800/50 pr-2 pl-1">
+          <p class="text-slate-400 font-medium">Humidity Ratio (W)</p>
+          <p class="text-lg font-bold font-mono text-violet-400" id="hudW">--</p>
+        </div>
+        <div class="border-r border-slate-800/50 pr-2 pl-1">
+          <p class="text-slate-400 font-medium">Wet Bulb (T<sub>wb</sub>)</p>
+          <p class="text-lg font-bold font-mono text-sky-400" id="hudTwb">--</p>
+        </div>
+        <div class="border-r border-slate-800/50 pr-2 pl-1">
+          <p class="text-slate-400 font-medium">Dew Point (T<sub>dp</sub>)</p>
+          <p class="text-lg font-bold font-mono text-blue-400" id="hudTdp">--</p>
+        </div>
+        <div class="border-r border-slate-800/50 pr-2 pl-1">
+          <p class="text-slate-400 font-medium">Enthalpy (h)</p>
+          <p class="text-lg font-bold font-mono text-emerald-400" id="hudH">--</p>
+        </div>
+        <div class="pl-1">
+          <p class="text-slate-400 font-medium">Spec. Volume (v)</p>
+          <p class="text-lg font-bold font-mono text-rose-400" id="hudVol">--</p>
+        </div>
+      </div>
+
+      <!-- Canvas Container -->
+      <div class="canvas-container flex-1 bg-slate-950 rounded-lg overflow-hidden border border-slate-850 relative">
+        <canvas id="psychChart" class="absolute inset-0 w-full h-full"></canvas>
+
+        <!-- Floating Zoom/Pan Controller -->
+        <div class="absolute top-4 left-4 bg-slate-900/95 backdrop-blur border border-slate-800 rounded-lg p-1.5 flex flex-col gap-1.5 shadow-lg z-10 select-none">
+          <button id="zoomInBtn" class="p-1.5 hover:bg-slate-800 text-slate-300 hover:text-white rounded transition flex items-center justify-center" title="Zoom In">
+            <i data-lucide="zoom-in" class="w-4 h-4"></i>
+          </button>
+          <button id="zoomOutBtn" class="p-1.5 hover:bg-slate-800 text-slate-300 hover:text-white rounded transition flex items-center justify-center" title="Zoom Out">
+            <i data-lucide="zoom-out" class="w-4 h-4"></i>
+          </button>
+          <div class="h-[1px] bg-slate-800 mx-1"></div>
+          <button id="zoomResetBtn" class="p-1.5 hover:bg-slate-800 text-slate-300 hover:text-white rounded transition flex items-center justify-center" title="Reset View">
+            <i data-lucide="maximize" class="w-4 h-4"></i>
+          </button>
+          <div class="h-[1px] bg-slate-800 mx-1"></div>
+          <div class="text-[9px] font-bold text-indigo-400 font-mono text-center" id="zoomLevelIndicator">1.0x</div>
+        </div>
+
+        <!-- Touch / Drag Guide Overlay -->
+        <div class="absolute bottom-4 left-4 bg-slate-900/90 backdrop-blur border border-slate-800/80 rounded px-2.5 py-1.5 text-[10px] text-slate-400 pointer-events-none select-none z-10 flex items-center gap-2">
+          <i data-lucide="info" class="w-4 h-4 text-indigo-400 flex-shrink-0"></i>
+          <span><strong>Pro-Tip:</strong> Drag to pan • Scroll wheel/pinch to zoom • Click/tap to plot states</span>
+        </div>
+      </div>
+
+      <!-- Highlight Interactive Legend -->
+      <div class="bg-slate-950/60 border border-slate-850 p-3 rounded-lg text-xs">
+        <p class="font-semibold text-slate-300 mb-2 flex items-center gap-1.5">
+          <i data-lucide="info" class="w-4 h-4 text-indigo-400"></i> Hover to Highlight Chart Lines:
+        </p>
+        <div class="flex flex-wrap gap-2.5">
+          <button data-highlight="sat" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 hover:border-indigo-500/40 hover:text-indigo-300 transition">
+            Saturation Boundary (100% RH)
+          </button>
+          <button data-highlight="rh" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 hover:border-teal-500/40 hover:text-teal-300 transition">
+            Constant RH (10% - 90%)
+          </button>
+          <button data-highlight="wb" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 hover:border-sky-500/40 hover:text-sky-300 transition">
+            Constant Wet Bulb (T<sub>wb</sub>)
+          </button>
+          <button data-highlight="h" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 hover:border-emerald-500/40 hover:text-emerald-300 transition">
+            Constant Enthalpy (h)
+          </button>
+          <button data-highlight="v" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 hover:border-rose-500/40 hover:text-rose-300 transition">
+            Constant Volume (v)
+          </button>
+          <button data-highlight="dev" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-850 text-slate-300 hover:border-purple-500/40 hover:text-purple-300 transition">
+            Enthalpy Correction (Δh Deviation)
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Controls Panel (Col: 4) -->
+    <section class="lg:col-span-4 flex flex-col gap-6 overflow-y-auto max-h-[85vh] lg:pr-1">
+      
+      <!-- Simulation / Process Control -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
+        <h2 class="text-base font-bold text-white mb-3 flex items-center gap-2">
+          <i data-lucide="sliders" class="w-5 h-5 text-indigo-400"></i> Process Simulator
+        </h2>
+        
+        <div class="mb-4">
+          <label class="block text-xs font-medium text-slate-400 mb-1.5">Process Mode</label>
+          <select id="processMode" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+            <option value="none">No Active Process (Compare States)</option>
+            <option value="sensible">Sensible Heating / Cooling (Const W)</option>
+            <option value="dehumid">Cooling & Dehumidification (AC Coil)</option>
+            <option value="evaporative">Adiabatic Humidification (Evap Cooling)</option>
+            <option value="mixing">Adiabatic Mixing of Air Streams</option>
+          </select>
+        </div>
+
+        <!-- Mixing Ratio Controls -->
+        <div id="mixingControls" class="hidden mb-4 p-3 bg-slate-950 rounded-lg border border-slate-800">
+          <div class="flex justify-between items-center mb-1 text-xs">
+            <span class="text-slate-400">Stream 1 Mass Ratio (<span class="text-sky-400 font-mono font-bold" id="ratio1Val">50</span>%)</span>
+            <span class="text-slate-400">Stream 2 (<span class="text-amber-400 font-mono font-bold" id="ratio2Val">50</span>%)</span>
+          </div>
+          <input type="range" id="mixRatio" min="0" max="100" value="50" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500" />
+          <p class="text-[10px] text-slate-500 mt-2">Calculates resulting State 3 strictly via conservation of mass & energy.</p>
+        </div>
+
+        <div id="processExplanation" class="text-xs bg-slate-950 border border-slate-850 rounded-lg p-3 text-slate-400 leading-relaxed">
+          Select a process to visualize air transitions.
+        </div>
+      </div>
+
+      <!-- State Inputs & Property Details -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl flex-1 flex flex-col gap-4">
+        
+        <!-- Toggle State Editing Tabs -->
+        <div class="flex border-b border-slate-800">
+          <button id="tabState1" class="flex-1 pb-2 text-sm font-bold border-b-2 border-indigo-500 text-sky-400 flex items-center justify-center gap-1.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-sky-500"></span> State 1
+          </button>
+          <button id="tabState2" class="flex-1 pb-2 text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-amber-400 flex items-center justify-center gap-1.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> State 2
+          </button>
+        </div>
+
+        <!-- Inputs Panel -->
+        <div class="bg-slate-950 border border-slate-850 rounded-lg p-3 flex flex-col gap-3">
+          <div class="flex items-center justify-between text-xs font-semibold text-slate-300">
+            <span>Calculate Via:</span>
+            <select id="inputTypeSelect" class="bg-slate-900 border border-slate-800 rounded px-2 py-1 text-xs text-slate-200 focus:outline-none">
+              <option value="db-rh">Dry Bulb + Relative Humidity</option>
+              <option value="db-wb">Dry Bulb + Wet Bulb</option>
+              <option value="db-dp">Dry Bulb + Dew Point</option>
+              <option value="db-w">Dry Bulb + Humidity Ratio</option>
+            </select>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 mt-1">
+            <!-- Input Variable 1 -->
+            <div>
+              <label class="block text-[11px] text-slate-400 font-medium mb-1" id="inputLabel1">Dry Bulb (T<sub>db</sub>)</label>
+              <div class="relative flex items-center">
+                <input type="number" id="inputVar1" value="25.0" step="0.5" class="w-full bg-slate-900 border border-slate-800 rounded px-2.5 py-1.5 text-sm font-mono text-white focus:outline-none focus:border-indigo-500" />
+                <span class="absolute right-2 text-xs text-slate-500 font-mono" id="inputUnit1">°C</span>
+              </div>
+            </div>
+            <!-- Input Variable 2 -->
+            <div>
+              <label class="block text-[11px] text-slate-400 font-medium mb-1" id="inputLabel2">Relative Humidity</label>
+              <div class="relative flex items-center">
+                <input type="number" id="inputVar2" value="50.0" step="1" class="w-full bg-slate-900 border border-slate-800 rounded px-2.5 py-1.5 text-sm font-mono text-white focus:outline-none focus:border-indigo-500" />
+                <span class="absolute right-2 text-xs text-slate-500 font-mono" id="inputUnit2">%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Boundary warning banner -->
+          <div id="boundaryWarning" class="hidden text-[11px] bg-amber-500/10 border border-amber-500/30 text-amber-400 rounded p-2 flex items-start gap-1.5">
+            <i data-lucide="alert-triangle" class="w-3.5 h-3.5 mt-0.5 flex-shrink-0"></i>
+            <span>Calculated inputs lie outside standard operating limits or saturation curve. Properties clamped.</span>
+          </div>
+        </div>
+
+        <!-- Calculated Values Display Cards -->
+        <div class="space-y-2 flex-1">
+          <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Calculated State Properties</h3>
+          
+          <!-- Property Grid -->
+          <div class="grid grid-cols-2 gap-2" id="propsGrid">
+            <!-- Dry Bulb -->
+            <div class="bg-slate-950/60 p-2.5 rounded border border-slate-850 flex flex-col justify-between">
+              <span class="text-[10px] text-slate-500 font-medium uppercase">Dry Bulb Temp</span>
+              <span class="text-base font-bold font-mono text-white" id="propTdb">--</span>
+            </div>
+            <!-- Wet Bulb -->
+            <div class="bg-slate-950/60 p-2.5 rounded border border-slate-850 flex flex-col justify-between">
+              <span class="text-[10px] text-slate-500 font-medium uppercase">Wet Bulb Temp</span>
+              <span class="text-base font-bold font-mono text-sky-400" id="propTwb">--</span>
+            </div>
+            <!-- Dew Point -->
+            <div class="bg-slate-950/60 p-2.5 rounded border border-slate-850 flex flex-col justify-between">
+              <span class="text-[10px] text-slate-500 font-medium uppercase">Dew Point Temp</span>
+              <span class="text-base font-bold font-mono text-blue-400" id="propTdp">--</span>
+            </div>
+            <!-- Relative Humidity -->
+            <div class="bg-slate-950/60 p-2.5 rounded border border-slate-850 flex flex-col justify-between">
+              <span class="text-[10px] text-slate-500 font-medium uppercase">Rel. Humidity</span>
+              <span class="text-base font-bold font-mono text-teal-400" id="propRH">--</span>
+            </div>
+            <!-- Humidity Ratio -->
+            <div class="bg-slate-950/60 p-2.5 rounded border border-slate-850 flex flex-col justify-between col-span-2">
+              <div class="flex justify-between items-center">
+                <span class="text-[10px] text-slate-500 font-medium uppercase">Humidity Ratio (W)</span>
+                <span class="text-xs font-mono text-slate-400" id="propWkg">--</span>
+              </div>
+              <span class="text-base font-bold font-mono text-violet-400" id="propW">--</span>
+            </div>
+            <!-- Enthalpy -->
+            <div class="bg-slate-950/60 p-2.5 rounded border border-slate-850 flex flex-col justify-between col-span-2">
+              <span class="text-[10px] text-slate-500 font-medium uppercase">Enthalpy (h)</span>
+              <span class="text-base font-bold font-mono text-emerald-400" id="propH">--</span>
+            </div>
+            <!-- Specific Volume -->
+            <div class="bg-slate-950/60 p-2.5 rounded border border-slate-850 flex flex-col justify-between col-span-2">
+              <span class="text-[10px] text-slate-500 font-medium uppercase">Specific Volume (v)</span>
+              <span class="text-base font-bold font-mono text-rose-400" id="propVol">--</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-900 bg-slate-950 text-slate-500 px-6 py-4 text-xs text-center flex flex-col sm:flex-row items-center justify-between gap-2">
+    <div>
+      © 2026 Psychrometric Chart Simulator. Built for engineering educators and practitioners.
+    </div>
+    <div class="flex items-center gap-4">
+      <span class="text-slate-400 hover:text-slate-300 flex items-center gap-1">
+        <i data-lucide="book-open" class="w-3.5 h-3.5"></i> standard atmospheric reference: ASHRAE Fundamentals
+      </span>
+    </div>
+  </footer>
+
+  <!-- Web App Scripts & Physics Engines -->
+  <script>
+    // Initialize Lucide Icons
+    lucide.createIcons();
+
+    // GLOBAL APP STATE
+    let currentUnits = 'SI'; // 'SI' (Metric) or 'IP' (Imperial)
+    let currentElevation = 0; // meters (or feet if IP is active - values kept in SI internally)
+    let activeTab = 1; // 1 = State 1, 2 = State 2
+    let activeHighlight = null; // Highlighting lines 'sat', 'rh', 'wb', 'h', 'v', 'dev'
+
+    // Interactive Zoom / Pan State
+    let zoomScale = 1.0;
+    let panX = 0;
+    let panY = 0;
+
+    // Drag-to-pan flags
+    let isDragging = false;
+    let isMouseDown = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let initialPanX = 0;
+    let initialPanY = 0;
+
+    // Thermodynamic Constant Values at Sea Level Standard
+    const P_STD_SI = 101.325; // kPa
+
+    // State Objects
+    // Each state stores its primary Metric SI representation. Conversions happen during UI binding.
+    let state1 = { tdb: 25.0, w: 0.010, rh: 50.0, twb: 17.9, tdp: 13.9, h: 50.6, v: 0.858 };
+    let state2 = { tdb: 15.0, w: 0.006, rh: 56.4, twb: 11.2, tdp: 6.2, h: 30.2, v: 0.824 };
+    let state3 = { tdb: 20.0, w: 0.008, rh: 53.2, twb: 14.6, tdp: 10.1, h: 40.4, v: 0.841 }; // Mixer State
+
+    let processMode = 'none'; // 'none', 'sensible', 'dehumid', 'evaporative', 'mixing'
+    let mixRatio = 0.5; // fraction of Stream 1 (0.0 to 1.0)
+
+    // Chart boundary definitions (SI Range limits)
+    const T_MIN_SI = -10.0;
+    const T_MAX_SI = 50.0;
+    const W_MIN_SI = 0.0;
+    const W_MAX_SI = 0.030; // 30 g/kg
+
+    // Core Canvas Configuration
+    const canvas = document.getElementById('psychChart');
+    const ctx = canvas.getContext('2d');
+    let chartHoverState = null; // tracking mouse hover coordinate properties
+
+    // ==========================================
+    // THERMODYNAMIC PHYSICS FORMULAS (Metric SI)
+    // ==========================================
+
+    // Get atmospheric pressure based on elevation (meters)
+    function getPressureAtElevation(z_m) {
+      return P_STD_SI * Math.pow(1 - 2.25577e-5 * z_m, 5.25588);
+    }
+
+    // Saturation vapor pressure (kPa) using Modified Tetens Equation (very accurate -10C to 50C)
+    function getPsat(tdb) {
+      if (tdb >= 0) {
+        return 0.61078 * Math.exp((17.27 * tdb) / (tdb + 237.3));
+      } else {
+        // Over ice
+        return 0.61078 * Math.exp((21.875 * tdb) / (tdb + 265.5));
+      }
+    }
+
+    // Given dry-bulb temperature (°C) and vapor pressure (kPa), calculate dew point (°C)
+    function getTdp(pw) {
+      if (pw <= 0.0001) return -40.0;
+      let x = Math.log(pw / 0.61078);
+      // Inverse of Tetens
+      let tdp = (237.3 * x) / (17.27 - x);
+      if (tdp < 0) {
+        tdp = (265.5 * x) / (21.875 - x);
+      }
+      return tdp;
+    }
+
+    // Humidity ratio W (kg water / kg dry air) given vapor pressure pw and total pressure P
+    function getW(pw, P) {
+      if (pw >= P) pw = P * 0.999;
+      return 0.62198 * pw / (P - pw);
+    }
+
+    // Vapor pressure pw (kPa) given humidity ratio W and total pressure P
+    function getPw(w, P) {
+      return P * w / (0.62198 + w);
+    }
+
+    // Enthalpy h (kJ/kg dry air) given dry bulb tdb (°C) and humidity ratio W (kg/kg)
+    function getEnthalpy(tdb, w) {
+      return 1.006 * tdb + w * (2501.0 + 1.86 * tdb);
+    }
+
+    // Specific Volume v (m3/kg dry air) given dry bulb tdb (°C), humidity ratio W, and pressure P
+    function getSpecificVolume(tdb, w, P) {
+      const R_da = 0.287055; // kJ/(kg K)
+      const T_K = tdb + 273.15;
+      return R_da * T_K * (1.0 + 1.6078 * w) / P;
+    }
+
+    // Wet Bulb Temperature solver using iterative bisection method
+    // Thermodynamic wet bulb equation: h(T, W) = h(T_wb, W_sat(T_wb)) - (W_sat(T_wb) - W) * C_pw * T_wb
+    function getTwb(tdb, w, P) {
+      let h_actual = getEnthalpy(tdb, w);
+      let t_dp = getTdp(getPw(w, P));
+      
+      let low = t_dp;
+      let high = tdb;
+      
+      // Edge cases
+      if (low >= high) return tdb;
+
+      let twb = 0.5 * (low + high);
+      let iter = 0;
+      const tol = 0.005;
+
+      while ((high - low) > tol && iter < 40) {
+        twb = 0.5 * (low + high);
+        let p_sat_wb = getPsat(twb);
+        let w_sat_wb = getW(p_sat_wb, P);
+        
+        // Liquid water enthalpy component
+        let h_wb_saturated = getEnthalpy(twb, w_sat_wb);
+        let adjustment = (w_sat_wb - w) * 4.186 * twb;
+        let h_calculated = h_wb_saturated - adjustment;
+
+        if (h_calculated > h_actual) {
+          high = twb;
+        } else {
+          low = twb;
+        }
+        iter++;
+      }
+      return twb;
+    }
+
+    // Solves for W given dry bulb temperature and a target enthalpy deviation (deltaH)
+    function getWForDeviation(tdb, deltaH, P) {
+      let lowW = 0.0;
+      let psat = getPsat(tdb);
+      let highW = getW(psat, P);
+      
+      let w = 0.5 * (lowW + highW);
+      for (let iter = 0; iter < 12; iter++) {
+        w = 0.5 * (lowW + highW);
+        let twb = getTwb(tdb, w, P);
+        let psat_wb = getPsat(twb);
+        let w_sat_wb = getW(psat_wb, P);
+        let h_sat_wb = getEnthalpy(twb, w_sat_wb);
+        let h_actual = getEnthalpy(tdb, w);
+        let dev = h_actual - h_sat_wb;
+        
+        if (dev > deltaH) {
+          highW = w;
+        } else {
+          lowW = w;
+        }
+      }
+
+      // Check physical compatibility to prevent out-of-range artifacts
+      let final_twb = getTwb(tdb, w, P);
+      let final_psat_wb = getPsat(final_twb);
+      let final_w_sat_wb = getW(final_psat_wb, P);
+      let final_h_sat_wb = getEnthalpy(final_twb, final_w_sat_wb);
+      let final_h_actual = getEnthalpy(tdb, w);
+      let final_dev = final_h_actual - final_h_sat_wb;
+
+      if (Math.abs(final_dev - deltaH) > 0.08) {
+        return -1; // Flag as invalid/unachievable
+      }
+      return w;
+    }
+
+    // Solve the intersection coordinates on the upper-left Enthalpy Scale Line
+    function getEnthalpyScaleIntersection(h_val) {
+      // Line from A(-10, 0.008) to B(18, 0.030)
+      const tA = -10, wA = 0.008;
+      const tB = 18, wB = 0.030;
+      
+      let low = -0.2;
+      let high = 1.2;
+      let alpha = 0.5;
+      for (let iter = 0; iter < 15; iter++) {
+        alpha = (low + high) / 2;
+        let t = tA + alpha * (tB - tA);
+        let w = wA + alpha * (wB - wA);
+        let h_calc = getEnthalpy(t, w);
+        if (h_calc > h_val) {
+          high = alpha;
+        } else {
+          low = alpha;
+        }
+      }
+      return {
+        t: tA + alpha * (tB - tA),
+        w: wA + alpha * (wB - wA)
+      };
+    }
+
+    // Complete State Solver: Given two properties, calculate everything else
+    function solveState(val1, val2, type, P) {
+      let tdb = 25.0;
+      let w = 0.010;
+      let rh = 50.0;
+      let twb = 18.0;
+      let tdp = 14.0;
+      let h = 50.0;
+      let v = 0.85;
+
+      try {
+        if (type === 'db-rh') {
+          tdb = Math.min(Math.max(val1, T_MIN_SI), T_MAX_SI);
+          let rh_raw = Math.min(Math.max(val2, 0.001), 100.0);
+          rh = rh_raw;
+          let psat = getPsat(tdb);
+          let pw = (rh / 100.0) * psat;
+          w = getW(pw, P);
+        } 
+        else if (type === 'db-wb') {
+          tdb = Math.min(Math.max(val1, T_MIN_SI), T_MAX_SI);
+          let twb_raw = Math.min(Math.max(val2, T_MIN_SI), tdb);
+          twb = twb_raw;
+          
+          let psat_wb = getPsat(twb);
+          let w_sat_wb = getW(psat_wb, P);
+          
+          // Analytical derivation of adiabatic saturation
+          let num = (1.006 + 1.86 * w_sat_wb) * (twb - tdb) + 2501 * w_sat_wb - 4.186 * twb * w_sat_wb;
+          let den = 2501 + 1.86 * tdb - 4.186 * twb;
+          w = num / den;
+          
+          if (w < 0) w = 0;
+          let pw = getPw(w, P);
+          let psat = getPsat(tdb);
+          rh = Math.min((pw / psat) * 100.0, 100.0);
+        } 
+        else if (type === 'db-dp') {
+          tdb = Math.min(Math.max(val1, T_MIN_SI), T_MAX_SI);
+          let tdp_raw = Math.min(Math.max(val2, T_MIN_SI), tdb);
+          tdp = tdp_raw;
+          
+          let pw = getPsat(tdp);
+          w = getW(pw, P);
+          let psat = getPsat(tdb);
+          rh = Math.min((pw / psat) * 100.0, 100.0);
+        } 
+        else if (type === 'db-w') {
+          tdb = Math.min(Math.max(val1, T_MIN_SI), T_MAX_SI);
+          w = Math.min(Math.max(val2, W_MIN_SI), W_MAX_SI);
+          
+          let pw = getPw(w, P);
+          let psat = getPsat(tdb);
+          rh = Math.min((pw / psat) * 100.0, 100.0);
+          
+          // Clamp relative humidity to 100% saturation limit
+          if (rh > 100.0) {
+            rh = 100.0;
+            pw = psat;
+            w = getW(pw, P);
+          }
+        }
+
+        // Standard calculations after determining base tdb & w
+        let pw_calc = getPw(w, P);
+        let psat_calc = getPsat(tdb);
+        rh = Math.min(Math.max((pw_calc / psat_calc) * 100.0, 0.0), 100.0);
+        
+        tdp = getTdp(pw_calc);
+        h = getEnthalpy(tdb, w);
+        v = getSpecificVolume(tdb, w, P);
+        twb = getTwb(tdb, w, P);
+
+        if (tdp > tdb) tdp = tdb;
+        if (twb > tdb) twb = tdb;
+        
+        return { tdb, w, rh, twb, tdp, h, v };
+      } catch (err) {
+        console.error("Thermodynamic calculation out of bounds", err);
+        return { tdb: 25, w: 0.010, rh: 50, twb: 18, tdp: 14, h: 50, v: 0.85 };
+      }
+    }
+
+
+    // ==========================================
+    // UNIT CONVERSIONS (Metric <-> Imperial)
+    // ==========================================
+
+    // Convert internal SI value to current active UI display format
+    function convertValue(val, propertyName, targetUnits) {
+      if (targetUnits === 'SI') {
+        if (propertyName === 'w') {
+          return val * 1000; // kg/kg to g/kg (SI display unit)
+        }
+        return val;
+      }
+      
+      // Convert to IP (Imperial)
+      switch (propertyName) {
+        case 'tdb':
+        case 'twb':
+        case 'tdp':
+          return val * 1.8 + 32; // °C to °F
+        case 'w':
+          return val * 7000; // kg/kg to grains/lb (I-P display unit)
+        case 'h':
+          return val * 0.429923; // kJ/kg to Btu/lb
+        case 'v':
+          return val * 16.0185; // m3/kg to ft3/lb
+        case 'elevation':
+          return val * 3.28084; // meters to feet
+        case 'pressure':
+          return val * 0.2953; // kPa to inHg
+        default:
+          return val;
+      }
+    }
+
+    // Convert UI display format back to standard Metric SI internal values
+    function revertValue(val, propertyName, sourceUnits) {
+      if (sourceUnits === 'SI') {
+        if (propertyName === 'w') {
+          return val / 1000; // g/kg back to kg/kg (SI internal physics)
+        }
+        return val;
+      }
+
+      // Convert from IP to SI
+      switch (propertyName) {
+        case 'tdb':
+        case 'twb':
+        case 'tdp':
+          return (val - 32) / 1.8; // °F to °C
+        case 'w':
+          return val / 7000; // grains/lb back to kg/kg
+        case 'h':
+          return val / 0.429923; // Btu/lb to kJ/kg
+        case 'v':
+          return val / 16.0185; // ft3/lb to m3/kg
+        case 'elevation':
+          return val / 3.28084; // feet to meters
+        default:
+          return val;
+      }
+    }
+
+    // Formatter helper for UI
+    function formatProp(val, propertyName, units = currentUnits) {
+      const converted = convertValue(val, propertyName, units);
+      if (units === 'SI') {
+        switch (propertyName) {
+          case 'tdb':
+          case 'twb':
+          case 'tdp':
+            return `${converted.toFixed(1)} °C`;
+          case 'w':
+            return `${converted.toFixed(2)} g/kg`;
+          case 'w_raw':
+            return `${val.toFixed(5)} kg/kg`;
+          case 'rh':
+            return `${converted.toFixed(1)}%`;
+          case 'h':
+            return `${converted.toFixed(1)} kJ/kg`;
+          case 'v':
+            return `${converted.toFixed(3)} m³/kg`;
+          case 'elevation':
+            return `${converted.toFixed(0)} m`;
+          case 'pressure':
+            return `${converted.toFixed(1)} kPa`;
+          default:
+            return `${converted.toFixed(2)}`;
+        }
+      } else {
+        switch (propertyName) {
+          case 'tdb':
+          case 'twb':
+          case 'tdp':
+            return `${converted.toFixed(1)} °F`;
+          case 'w':
+            return `${converted.toFixed(1)} gr/lb`;
+          case 'w_raw':
+            return `${val.toFixed(5)} lb/lb`;
+          case 'rh':
+            return `${converted.toFixed(1)}%`;
+          case 'h':
+            return `${converted.toFixed(1)} Btu/lb`;
+          case 'v':
+            return `${converted.toFixed(2)} ft³/lb`;
+          case 'elevation':
+            return `${converted.toFixed(0)} ft`;
+          case 'pressure':
+            return `${converted.toFixed(2)} inHg`;
+          default:
+            return `${converted.toFixed(2)}`;
+        }
+      }
+    }
+
+
+    // ==========================================
+    // CANVAS DRAWING & COORDINATE MAPPING (WITH ZOOM & PAN)
+    // ==========================================
+
+    // Margins inside canvas
+    const padding = { left: 75, right: 65, top: 40, bottom: 55 };
+
+    // Unzoomed/standard canvas X coordinate mapping
+    function getX_std(tdb, width) {
+      let t_range = T_MAX_SI - T_MIN_SI;
+      let plot_width = width - padding.left - padding.right;
+      let ratio = (tdb - T_MIN_SI) / t_range;
+      return padding.left + ratio * plot_width;
+    }
+
+    // Unzoomed/standard canvas Y coordinate mapping
+    function getY_std(w, height) {
+      let w_range = W_MAX_SI - W_MIN_SI;
+      let plot_height = height - padding.top - padding.bottom;
+      let ratio = (w - W_MIN_SI) / w_range;
+      return height - padding.bottom - ratio * plot_height;
+    }
+
+    // Screen coordinates mapping with Zoom & Pan incorporated
+    function getX(tdb, width) {
+      let x_std = getX_std(tdb, width);
+      let plot_width = width - padding.left - padding.right;
+      let cx = padding.left + plot_width / 2;
+      return cx + (x_std - cx) * zoomScale + panX;
+    }
+
+    function getY(w, height) {
+      let y_std = getY_std(w, height);
+      let plot_height = height - padding.top - padding.bottom;
+      let cy = padding.top + plot_height / 2;
+      return cy + (y_std - cy) * zoomScale + panY;
+    }
+
+    // Standard coordinates mapping reversed from screen coordinate
+    function getStdXFromScreen(x_screen, width) {
+      let plot_width = width - padding.left - padding.right;
+      let cx = padding.left + plot_width / 2;
+      return cx + (x_screen - cx - panX) / zoomScale;
+    }
+
+    function getStdYFromScreen(y_screen, height) {
+      let plot_height = height - padding.top - padding.bottom;
+      let cy = padding.top + plot_height / 2;
+      return cy + (y_screen - cy - panY) / zoomScale;
+    }
+
+    // Map screen coordinate back to Temperature (Dry Bulb)
+    function getTdbFromX(x_screen, width) {
+      let x_std = getStdXFromScreen(x_screen, width);
+      let plot_width = width - padding.left - padding.right;
+      let ratio = (x_std - padding.left) / plot_width;
+      return T_MIN_SI + ratio * (T_MAX_SI - T_MIN_SI);
+    }
+
+    // Map screen coordinate back to Humidity Ratio
+    function getWFromY(y_screen, height) {
+      let y_std = getStdYFromScreen(y_screen, height);
+      let plot_height = height - padding.top - padding.bottom;
+      let ratio = (height - padding.bottom - y_std) / plot_height;
+      return W_MIN_SI + ratio * (W_MAX_SI - W_MIN_SI);
+    }
+
+    // Render loop and Psychrometric plotting
+    function drawChart() {
+      // Handle High DPI scaling
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+
+      const width = rect.width;
+      const height = rect.height;
+
+      // Clear Chart Background
+      ctx.fillStyle = '#020617'; // slate-950
+      ctx.fillRect(0, 0, width, height);
+
+      const P = getPressureAtElevation(currentElevation);
+
+      // --- VIEWPORT CLIPPING ---
+      // We clip everything so gridlines, points, and processes don't bleed into padding labels!
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(padding.left, padding.top, width - padding.left - padding.right, height - padding.top - padding.bottom);
+      ctx.clip();
+
+      // Clip bounds strictly for curves to restrict plotting above the saturation curve
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(getX(T_MIN_SI, width), getY(W_MIN_SI, height));
+      for (let t = T_MIN_SI; t <= T_MAX_SI; t += 0.5) {
+        let psat = getPsat(t);
+        let wsat = getW(psat, P);
+        ctx.lineTo(getX(t, width), getY(wsat, height));
+      }
+      ctx.lineTo(getX(T_MAX_SI, width), getY(W_MIN_SI, height));
+      ctx.closePath();
+      ctx.clip();
+
+      // 1. Plot Grid Line Highlights / Regular Lines
+      drawConstantEnthalpyLines(width, height, P);
+      drawConstantVolumeLines(width, height, P);
+      drawConstantWetBulbLines(width, height, P);
+      drawRelativeHumidityLines(width, height, P);
+
+      ctx.restore(); // Restore saturation curve clip
+
+      // 2. Draw Saturation Boundary Line (Highlighted if active)
+      drawSaturationBoundary(width, height, P);
+
+      // 3. Draw Enthalpy Correction / Deviation Curves (Always subtly drawn, bold when highlighted)
+      drawEnthalpyDeviationLines(width, height, P);
+
+      // 4. Draw Wet Bulb Temperature Scale (ticks + numbers directly on saturation curve)
+      drawWetBulbScale(width, height, P);
+
+      // 5. Draw Saturated Enthalpy Diagonal Scale (slide-rule outside saturation curve)
+      drawEnthalpyScale(width, height, P);
+
+      // 6. Draw Simulated Processes
+      drawProcessPaths(width, height);
+
+      // 7. Draw Interactive States (State 1, State 2, State 3)
+      drawStateNodes(width, height);
+
+      // 8. Draw Hover Crosshair Reticle
+      drawHoverCrosshair(width, height, P);
+
+      ctx.restore(); // Restore Viewport clip
+
+      // 9. Draw STATIONARY Frame, Axes Ticks, Numerical Scales & Titles on Top
+      drawAxesFrame(width, height, P);
+    }
+
+    // Draw the completely stationary axes frame & numeric tick labels
+    function drawAxesFrame(width, height, P) {
+      // Create a solid mask around the plotting area so zoomed lines underneath are hidden
+      ctx.fillStyle = '#020617'; // slate-950
+      
+      // Mask boxes
+      ctx.fillRect(0, 0, padding.left, height); // left
+      ctx.fillRect(width - padding.right, 0, padding.right, height); // right
+      ctx.fillRect(0, 0, width, padding.top); // top
+      ctx.fillRect(0, height - padding.bottom, width, padding.bottom); // bottom
+
+      // Axes lines
+      ctx.strokeStyle = '#475569'; // slate-600 (more visible)
+      ctx.lineWidth = 1.8;
+      
+      ctx.beginPath();
+      ctx.moveTo(padding.left, padding.top);
+      ctx.lineTo(padding.left, height - padding.bottom);
+      ctx.lineTo(width - padding.right, height - padding.bottom);
+      ctx.stroke();
+
+      // Dry Bulb Temp Ticks on bottom axis
+      ctx.fillStyle = '#cbd5e1'; // slate-300
+      ctx.font = 'bold 10px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+
+      // Dynamic Tick Steps based on Zoom scale
+      let stepT = currentUnits === 'SI' ? 5 : 10;
+      if (zoomScale > 4.5) stepT = currentUnits === 'SI' ? 1 : 2;
+      else if (zoomScale > 1.8) stepT = currentUnits === 'SI' ? 2 : 5;
+
+      let minT_Display = Math.ceil(convertValue(T_MIN_SI, 'tdb', currentUnits));
+      let maxT_Display = Math.floor(convertValue(T_MAX_SI, 'tdb', currentUnits));
+
+      for (let t_disp = minT_Display; t_disp <= maxT_Display; t_disp += stepT) {
+        let t_c = revertValue(t_disp, 'tdb', currentUnits);
+        let x = getX(t_c, width);
+        if (x >= padding.left && x <= width - padding.right) {
+          ctx.beginPath();
+          ctx.moveTo(x, height - padding.bottom);
+          ctx.lineTo(x, height - padding.bottom + 6);
+          ctx.stroke();
+          
+          ctx.fillText(`${t_disp}`, x, height - padding.bottom + 9);
+        }
+      }
+
+      // X-Axis Title
+      ctx.font = 'bold 11px sans-serif';
+      ctx.fillStyle = '#f8fafc'; // slate-50
+      ctx.fillText(currentUnits === 'SI' ? 'Dry Bulb Temperature (°C)' : 'Dry Bulb Temperature (°F)', (width - padding.left - padding.right)/2 + padding.left, height - padding.bottom + 28);
+
+      // Humidity Ratio Ticks on right axis (CORRECTED HIGH-DENSITY SCALE)
+      ctx.fillStyle = '#cbd5e1'; // slate-300
+      ctx.font = 'bold 10px monospace';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 1.0;
+      
+      let stepW = currentUnits === 'SI' ? 2 : 10; // g/kg or grains/lb
+      if (zoomScale > 4.5) stepW = currentUnits === 'SI' ? 0.5 : 2;
+      else if (zoomScale > 1.8) stepW = currentUnits === 'SI' ? 1 : 5;
+
+      let maxW_Display = currentUnits === 'SI' ? 30 : 210; // 30 g/kg or 210 grains/lb
+
+      for (let w_disp = 0; w_disp <= maxW_Display; w_disp += stepW) {
+        let w_raw = currentUnits === 'SI' ? w_disp / 1000 : w_disp / 7000;
+        let y = getY(w_raw, height);
+        if (y >= padding.top && y <= height - padding.bottom) {
+          ctx.beginPath();
+          ctx.moveTo(width - padding.right, y);
+          ctx.lineTo(width - padding.right + 6, y);
+          ctx.stroke();
+
+          let labelStr = w_disp.toFixed(w_disp % 1 === 0 ? 0 : 1);
+          ctx.fillText(labelStr, width - padding.right + 9, y);
+        }
+      }
+
+      // Y-Axis Title
+      ctx.save();
+      ctx.translate(width - padding.right + 42, (height - padding.top - padding.bottom)/2 + padding.top);
+      ctx.rotate(Math.PI / 2);
+      ctx.font = 'bold 11px sans-serif';
+      ctx.fillStyle = '#f8fafc'; // slate-50
+      ctx.textAlign = 'center';
+      ctx.fillText(currentUnits === 'SI' ? 'Humidity Ratio (g / kg of Dry Air)' : 'Humidity Ratio (grains / lb of Dry Air)', 0, 0);
+      ctx.restore();
+    }
+
+    // Draw Saturated Enthalpy Diagonal Scale (Slide-rule outside saturation curve)
+    function drawEnthalpyScale(width, height, P) {
+      // Define scale axis line in standard SI coordinates (above saturation region)
+      const tA = -10, wA = 0.008;
+      const tB = 18, wB = 0.030;
+      
+      const xA = getX(tA, width);
+      const yA = getY(wA, height);
+      const xB = getX(tB, width);
+      const yB = getY(wB, height);
+      
+      // Draw scale axis boundary
+      ctx.strokeStyle = '#10b981'; // Saturated Enthalpy signature Emerald Green
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(xA, yA);
+      ctx.lineTo(xB, yB);
+      ctx.stroke();
+
+      let minH = convertValue(getEnthalpy(tA, wA), 'h', currentUnits);
+      let maxH = convertValue(getEnthalpy(tB, wB), 'h', currentUnits);
+      
+      let step = currentUnits === 'SI' ? 5 : 2;
+      let startH = Math.ceil(minH / step) * step;
+      let endH = Math.floor(maxH / step) * step;
+      
+      // Unit normal vector pointing up-left
+      let dx = xB - xA;
+      let dy = yB - yA;
+      let L = Math.sqrt(dx*dx + dy*dy);
+      let nx = -dy / L;
+      let ny = dx / L;
+
+      ctx.fillStyle = '#10b981';
+      ctx.font = 'bold 9px monospace';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+
+      for (let h_disp = startH; h_disp <= endH; h_disp += step) {
+        let h_val = revertValue(h_disp, 'h', currentUnits);
+        let pt = getEnthalpyScaleIntersection(h_val);
+        
+        if (pt.t >= tA && pt.t <= tB) {
+          let x = getX(pt.t, width);
+          let y = getY(pt.w, height);
+          
+          // Draw diagonal scale tick
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.lineTo(x + nx * 8, y + ny * 8);
+          ctx.stroke();
+          
+          // Draw tick value label
+          ctx.save();
+          ctx.translate(x + nx * 12, y + ny * 12);
+          ctx.rotate(Math.atan2(dy, dx));
+          ctx.fillText(`${h_disp.toFixed(0)}`, 0, 0);
+          ctx.restore();
+        }
+      }
+
+      // Main diagonal title
+      ctx.fillStyle = '#10b981';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.save();
+      let midX = (xA + xB) / 2;
+      let midY = (yA + yB) / 2;
+      ctx.translate(midX + nx * 28, midY + ny * 28);
+      ctx.rotate(Math.atan2(dy, dx));
+      ctx.fillText(currentUnits === 'SI' ? 'Saturated Enthalpy (kJ / kg)' : 'Saturated Enthalpy (Btu / lb)', 0, 0);
+      ctx.restore();
+    }
+
+    // Draw Saturated Wet Bulb Temperature scale ticks directly on saturation boundary
+    function drawWetBulbScale(width, height, P) {
+      ctx.strokeStyle = '#0ea5e9'; // Wet Bulb sky blue
+      ctx.lineWidth = 1.8;
+      ctx.fillStyle = '#0ea5e9';
+      ctx.font = 'bold 9px monospace';
+
+      let stepTwb = currentUnits === 'SI' ? 5 : 10;
+      if (zoomScale > 4.5) stepTwb = currentUnits === 'SI' ? 1 : 2;
+      else if (zoomScale > 1.8) stepTwb = currentUnits === 'SI' ? 2 : 5;
+
+      let minTwb_disp = Math.ceil(convertValue(T_MIN_SI, 'twb', currentUnits));
+      let maxTwb_disp = Math.floor(convertValue(T_MAX_SI, 'twb', currentUnits));
+
+      let startTwb = Math.ceil(minTwb_disp / stepTwb) * stepTwb;
+      let endTwb = Math.floor(maxTwb_disp / stepTwb) * stepTwb;
+
+      for (let twb_disp = startTwb; twb_disp <= endTwb; twb_disp += stepTwb) {
+        let twb_val = revertValue(twb_disp, 'twb', currentUnits);
+        let psat_wb = getPsat(twb_val);
+        let w_sat_wb = getW(psat_wb, P);
+
+        let x0 = getX(twb_val, width);
+        let y0 = getY(w_sat_wb, height);
+
+        // Step along wet-bulb direction to generate projecting tick normal
+        let t_step = twb_val + 2.0;
+        let num = (1.006 + 1.86 * w_sat_wb) * (twb_val - t_step) + 2501 * w_sat_wb - 4.186 * twb_val * w_sat_wb;
+        let den = 2501 + 1.86 * t_step - 4.186 * twb_val;
+        let w_step = num / den;
+
+        let x_step = getX(t_step, width);
+        let y_step = getY(w_step, height);
+
+        let dx = x_step - x0;
+        let dy = y_step - y0;
+        let len = Math.sqrt(dx*dx + dy*dy);
+        
+        if (len > 0.1) {
+          let ux = -dx / len;
+          let uy = -dy / len;
+
+          // Draw outward tick
+          ctx.beginPath();
+          ctx.moveTo(x0, y0);
+          ctx.lineTo(x0 + ux * 8, y0 + uy * 8);
+          ctx.stroke();
+
+          // Flip text orientation cleanly if it goes upside down
+          ctx.save();
+          ctx.translate(x0 + ux * 13, y0 + uy * 13);
+          let angle = Math.atan2(uy, ux);
+          if (angle > Math.PI / 2 || angle < -Math.PI / 2) {
+            angle += Math.PI;
+            ctx.textAlign = 'left';
+          } else {
+            ctx.textAlign = 'right';
+          }
+          ctx.rotate(angle);
+          ctx.fillText(`${twb_disp}°`, 0, 0);
+          ctx.restore();
+        }
+      }
+    }
+
+    // Draw Enthalpy Correction / Deviation Curves for unsaturated systems
+    function drawEnthalpyDeviationLines(width, height, P) {
+      const isHighlighted = activeHighlight === 'dev';
+      ctx.lineWidth = isHighlighted ? 2.0 : 0.9;
+      ctx.strokeStyle = isHighlighted ? 'rgba(168, 85, 247, 0.95)' : 'rgba(168, 85, 247, 0.45)'; 
+      ctx.fillStyle = isHighlighted ? '#a855f7' : '#c084fc';
+      ctx.font = 'bold 8.5px monospace';
+      ctx.setLineDash([3, 4]);
+
+      let devs = currentUnits === 'SI' ? [-0.5, -1.0, -1.5, -2.0, -2.5] : [-0.1, -0.2, -0.3, -0.4, -0.5, -0.6];
+      
+      devs.forEach(devVal => {
+        let devSI = currentUnits === 'SI' ? devVal : devVal / 0.429923; // Convert display value to SI inside physics engine
+        
+        ctx.beginPath();
+        let first = true;
+        
+        for (let t = T_MIN_SI; t <= T_MAX_SI; t += 1.0) {
+          let w = getWForDeviation(t, devSI, P);
+          if (w < 0) {
+            if (!first) {
+              ctx.stroke();
+              first = true;
+            }
+            continue;
+          }
+          let psat = getPsat(t);
+          let wsat = getW(psat, P);
+          
+          if (w >= W_MIN_SI && w <= wsat && w <= W_MAX_SI) {
+            let x = getX(t, width);
+            let y = getY(w, height);
+            if (first) {
+              ctx.beginPath();
+              ctx.moveTo(x, y);
+              first = false;
+            } else {
+              ctx.lineTo(x, y);
+            }
+          } else {
+            if (!first) {
+              ctx.stroke();
+              first = true;
+            }
+          }
+        }
+        if (!first) {
+          ctx.stroke();
+        }
+        
+        // Print Correction values inline
+        let labelT = 38; 
+        let w_lbl = getWForDeviation(labelT, devSI, P);
+        let psat_lbl = getPsat(labelT);
+        let wsat_lbl = getW(psat_lbl, P);
+        if (w_lbl >= W_MIN_SI && w_lbl <= wsat_lbl * 0.95 && w_lbl <= W_MAX_SI) {
+          let xLab = getX(labelT, width);
+          let yLab = getY(w_lbl, height);
+          if (xLab >= padding.left + 5 && xLab <= width - padding.right - 5 && yLab >= padding.top + 5 && yLab <= height - padding.bottom - 5) {
+            ctx.save();
+            ctx.fillText(`${devVal > 0 ? '+' : ''}${devVal} ${currentUnits === 'SI' ? 'kJ/kg' : 'Btu/lb'}`, xLab - 20, yLab - 4);
+            ctx.restore();
+          }
+        }
+      });
+      ctx.setLineDash([]);
+    }
+
+    // Plot constant Enthalpy lines
+    function drawConstantEnthalpyLines(width, height, P) {
+      const isHighlighted = activeHighlight === 'h';
+      ctx.lineWidth = isHighlighted ? 2.0 : 0.9;
+      ctx.strokeStyle = isHighlighted ? 'rgba(16, 185, 129, 0.95)' : 'rgba(16, 185, 129, 0.35)'; 
+      
+      ctx.fillStyle = isHighlighted ? '#10b981' : '#059669'; 
+      ctx.font = 'bold 9px monospace';
+      ctx.textAlign = 'right';
+
+      let stepH = currentUnits === 'SI' ? 10 : 5; // kJ/kg or Btu/lb
+      if (zoomScale > 4.5) stepH = currentUnits === 'SI' ? 2 : 1;
+      else if (zoomScale > 1.8) stepH = currentUnits === 'SI' ? 5 : 2.5;
+
+      let minH = convertValue(getEnthalpy(T_MIN_SI, W_MIN_SI), 'h', currentUnits);
+      let maxH = convertValue(getEnthalpy(T_MAX_SI, W_MAX_SI), 'h', currentUnits);
+
+      for (let h_disp = Math.floor(minH); h_disp <= Math.ceil(maxH); h_disp += stepH) {
+        let h_val = revertValue(h_disp, 'h', currentUnits);
+        
+        ctx.beginPath();
+        let first = true;
+        for (let t = T_MIN_SI; t <= T_MAX_SI; t += 1) {
+          let w = (h_val - 1.006 * t) / (2501.0 + 1.86 * t);
+          if (w >= W_MIN_SI && w <= W_MAX_SI) {
+            let x = getX(t, width);
+            let y = getY(w, height);
+            if (first) {
+              ctx.moveTo(x, y);
+              first = false;
+            } else {
+              ctx.lineTo(x, y);
+            }
+          }
+        }
+        ctx.stroke();
+
+        // Label layout
+        let labelT = T_MIN_SI + 4;
+        let wLabel = (h_val - 1.006 * labelT) / (2501.0 + 1.86 * labelT);
+        if (wLabel >= W_MIN_SI && wLabel <= W_MAX_SI * 0.95) {
+          let xLab = getX(labelT, width);
+          let yLab = getY(wLabel, height);
+          
+          if (xLab >= padding.left + 5 && xLab <= width - padding.right - 5 && yLab >= padding.top + 5 && yLab <= height - padding.bottom - 5) {
+            ctx.save();
+            ctx.translate(xLab, yLab);
+            ctx.rotate(-Math.PI / 6);
+            ctx.fillText(`${h_disp.toFixed(0)}`, -4, -4);
+            ctx.restore();
+          }
+        }
+      }
+    }
+
+    // Plot constant Specific Volume lines
+    function drawConstantVolumeLines(width, height, P) {
+      const isHighlighted = activeHighlight === 'v';
+      ctx.lineWidth = isHighlighted ? 2.0 : 0.9;
+      ctx.strokeStyle = isHighlighted ? 'rgba(244, 63, 94, 0.95)' : 'rgba(244, 63, 94, 0.35)'; 
+      ctx.fillStyle = isHighlighted ? '#f43f5e' : '#e11d48'; 
+      ctx.font = 'bold 8px monospace';
+
+      let stepV = currentUnits === 'SI' ? 0.02 : 0.5; // m3/kg or ft3/lb
+      if (zoomScale > 4.5) stepV = currentUnits === 'SI' ? 0.005 : 0.1;
+      else if (zoomScale > 1.8) stepV = currentUnits === 'SI' ? 0.01 : 0.25;
+
+      let minV = convertValue(getSpecificVolume(T_MIN_SI, W_MIN_SI, P), 'v', currentUnits);
+      let maxV = convertValue(getSpecificVolume(T_MAX_SI, W_MAX_SI, P), 'v', currentUnits);
+
+      for (let v_disp = Math.floor(minV * 100) / 100; v_disp <= Math.ceil(maxV * 10) / 10; v_disp += stepV) {
+        if (v_disp <= 0) continue;
+        let v_val = revertValue(v_disp, 'v', currentUnits);
+
+        ctx.beginPath();
+        let first = true;
+        for (let t = T_MIN_SI; t <= T_MAX_SI; t += 1) {
+          let T_K = t + 273.15;
+          let w = ( (v_val * P) / (0.287055 * T_K) - 1.0 ) / 1.6078;
+          if (w >= W_MIN_SI && w <= W_MAX_SI) {
+            let x = getX(t, width);
+            let y = getY(w, height);
+            if (first) {
+              ctx.moveTo(x, y);
+              first = false;
+            } else {
+              ctx.lineTo(x, y);
+            }
+          }
+        }
+        ctx.stroke();
+
+        // Print labels
+        let labelT = T_MAX_SI - 15;
+        let T_K_lbl = labelT + 273.15;
+        let w_lbl = ( (v_val * P) / (0.287055 * T_K_lbl) - 1.0 ) / 1.6078;
+        if (w_lbl >= W_MIN_SI && w_lbl <= W_MAX_SI) {
+          let xLab = getX(labelT, width);
+          let yLab = getY(w_lbl, height);
+          
+          if (xLab >= padding.left + 5 && xLab <= width - padding.right - 5 && yLab >= padding.top + 5 && yLab <= height - padding.bottom - 5) {
+            ctx.save();
+            ctx.translate(xLab, yLab);
+            ctx.rotate(-Math.PI / 3);
+            ctx.fillText(`${v_disp.toFixed(2)}`, -10, -3);
+            ctx.restore();
+          }
+        }
+      }
+    }
+
+    // Plot constant Wet Bulb lines
+    function drawConstantWetBulbLines(width, height, P) {
+      const isHighlighted = activeHighlight === 'wb';
+      ctx.lineWidth = isHighlighted ? 2.0 : 0.9;
+      ctx.strokeStyle = isHighlighted ? 'rgba(14, 165, 233, 0.95)' : 'rgba(14, 165, 233, 0.45)'; 
+      ctx.fillStyle = isHighlighted ? '#0ea5e9' : '#0284c7'; 
+      ctx.font = 'bold 9px monospace';
+
+      let stepTwb = currentUnits === 'SI' ? 5 : 10;
+      if (zoomScale > 4.5) stepTwb = currentUnits === 'SI' ? 1 : 2;
+      else if (zoomScale > 1.8) stepTwb = currentUnits === 'SI' ? 2 : 5;
+
+      let minTwb_disp = Math.ceil(convertValue(T_MIN_SI, 'twb', currentUnits));
+      let maxTwb_disp = Math.floor(convertValue(T_MAX_SI, 'twb', currentUnits));
+
+      for (let twb_disp = minTwb_disp; twb_disp <= maxTwb_disp; twb_disp += stepTwb) {
+        let twb_val = revertValue(twb_disp, 'twb', currentUnits);
+        
+        let psat_wb = getPsat(twb_val);
+        let w_sat_wb = getW(psat_wb, P);
+
+        ctx.beginPath();
+        ctx.moveTo(getX(twb_val, width), getY(w_sat_wb, height));
+
+        for (let t = twb_val; t <= T_MAX_SI; t += 1.0) {
+          let num = (1.006 + 1.86 * w_sat_wb) * (twb_val - t) + 2501 * w_sat_wb - 4.186 * twb_val * w_sat_wb;
+          let den = 2501 + 1.86 * t - 4.186 * twb_val;
+          let w = num / den;
+          if (w >= W_MIN_SI && w <= W_MAX_SI) {
+            ctx.lineTo(getX(t, width), getY(w, height));
+          }
+        }
+        ctx.stroke();
+
+        // Print Wet bulb labels along the saturation curve
+        let xLab = getX(twb_val, width) - 6;
+        let yLab = getY(w_sat_wb, height) - 6;
+        if (xLab >= padding.left + 5 && xLab <= width - padding.right - 5 && yLab >= padding.top + 5 && yLab <= height - padding.bottom - 5) {
+          ctx.save();
+          ctx.translate(xLab, yLab);
+          ctx.rotate(-Math.PI / 4);
+          ctx.fillText(`${twb_disp}°`, 0, 0);
+          ctx.restore();
+        }
+      }
+    }
+
+    // Plot constant Relative Humidity lines
+    function drawRelativeHumidityLines(width, height, P) {
+      const isHighlighted = activeHighlight === 'rh';
+      
+      let rhs = [10, 20, 30, 40, 50, 60, 70, 80, 90];
+      if (zoomScale > 1.8) {
+        rhs = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95];
+      }
+      
+      rhs.forEach(rh => {
+        ctx.lineWidth = isHighlighted ? 2.2 : 1.1;
+        ctx.strokeStyle = isHighlighted ? 'rgba(20, 184, 166, 0.95)' : 'rgba(20, 184, 166, 0.5)'; 
+        
+        ctx.beginPath();
+        let first = true;
+        for (let t = T_MIN_SI; t <= T_MAX_SI; t += 0.5) {
+          let psat = getPsat(t);
+          let pw = (rh / 100.0) * psat;
+          let w = getW(pw, P);
+          
+          if (w >= W_MIN_SI && w <= W_MAX_SI) {
+            let x = getX(t, width);
+            let y = getY(w, height);
+            if (first) {
+              ctx.moveTo(x, y);
+              first = false;
+            } else {
+              ctx.lineTo(x, y);
+            }
+          }
+        }
+        ctx.stroke();
+
+        // Print label values
+        ctx.fillStyle = isHighlighted ? '#14b8a6' : '#0d9488'; 
+        ctx.font = 'bold 8.5px sans-serif';
+        let labelT = T_MAX_SI - 4;
+        let psat_lbl = getPsat(labelT);
+        let w_lbl = getW((rh / 100.0) * psat_lbl, P);
+        if (w_lbl >= W_MIN_SI && w_lbl <= W_MAX_SI * 0.95) {
+          let xLab = getX(labelT, width) - 18;
+          let yLab = getY(w_lbl, height) - 3;
+          if (xLab >= padding.left + 5 && xLab <= width - padding.right - 5 && yLab >= padding.top + 5 && yLab <= height - padding.bottom - 5) {
+            ctx.fillText(`${rh}%`, xLab, yLab);
+          }
+        }
+      });
+    }
+
+    // Saturation Boundary Line (100% RH Limit)
+    function drawSaturationBoundary(width, height, P) {
+      const isHighlighted = activeHighlight === 'sat';
+      ctx.lineWidth = isHighlighted ? 3.5 : 2.2;
+      ctx.strokeStyle = isHighlighted ? '#818cf8' : '#e2e8f0'; 
+
+      ctx.beginPath();
+      let first = true;
+      for (let t = T_MIN_SI; t <= T_MAX_SI; t += 0.25) {
+        let psat = getPsat(t);
+        let wsat = getW(psat, P);
+        if (wsat >= W_MIN_SI && wsat <= W_MAX_SI) {
+          let x = getX(t, width);
+          let y = getY(wsat, height);
+          if (first) {
+            ctx.moveTo(x, y);
+            first = false;
+          } else {
+            ctx.lineTo(x, y);
+          }
+        }
+      }
+      ctx.stroke();
+
+      // Label
+      ctx.fillStyle = isHighlighted ? '#a5b4fc' : '#cbd5e1'; 
+      ctx.font = 'italic bold 9.5px sans-serif';
+      
+      let midT = 12;
+      let psat_mid = getPsat(midT);
+      let w_mid = getW(psat_mid, P);
+      let xLab = getX(midT, width) - 10;
+      let yLab = getY(w_mid, height) - 15;
+
+      if (xLab >= padding.left + 5 && xLab <= width - padding.right - 5 && yLab >= padding.top + 5 && yLab <= height - padding.bottom - 5) {
+        ctx.save();
+        ctx.translate(xLab, yLab);
+        ctx.rotate(-Math.PI / 4.5);
+        ctx.fillText("Saturation Curve (100% RH)", 0, 0);
+        ctx.restore();
+      }
+    }
+
+    // Render active thermodynamic states
+    function drawStateNodes(width, height) {
+      drawStateNodesAndLines(width, height);
+    }
+
+    function drawStateNodesAndLines(width, height) {
+      // Draw State 1
+      drawSingleNode(state1.tdb, state1.w, '#0ea5e9', '1', width, height);
+
+      // Draw State 2
+      drawSingleNode(state2.tdb, state2.w, '#f59e0b', '2', width, height);
+
+      // Draw State 3 if mixing process is selected
+      if (processMode === 'mixing') {
+        drawSingleNode(state3.tdb, state3.w, '#10b981', '3', width, height);
+      }
+    }
+
+    function drawSingleNode(tdb, w, color, labelText, width, height) {
+      let x = getX(tdb, width);
+      let y = getY(w, height);
+
+      // Draw background glow
+      ctx.beginPath();
+      ctx.arc(x, y, 12, 0, 2 * Math.PI);
+      ctx.fillStyle = `${color}25`;
+      ctx.fill();
+
+      // Draw outline ring
+      ctx.beginPath();
+      ctx.arc(x, y, 7, 0, 2 * Math.PI);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2.0;
+      ctx.fillStyle = '#0f172a'; 
+      ctx.fill();
+      ctx.stroke();
+
+      // Center point
+      ctx.beginPath();
+      ctx.arc(x, y, 2, 0, 2 * Math.PI);
+      ctx.fillStyle = color;
+      ctx.fill();
+
+      // Draw Text Tag label
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 9px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(labelText, x, y - 14);
+    }
+
+    // Render connecting operational lines for modeled air system processes
+    function drawProcessPaths(width, height) {
+      if (processMode === 'none') return;
+
+      const P = getPressureAtElevation(currentElevation);
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([4, 4]); 
+
+      const x1 = getX(state1.tdb, width);
+      const y1 = getY(state1.w, height);
+      const x2 = getX(state2.tdb, width);
+      const y2 = getY(state2.w, height);
+
+      if (processMode === 'sensible') {
+        ctx.strokeStyle = '#a855f7'; // Purple
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y1); 
+        ctx.stroke();
+
+        drawArrowhead(ctx, x1, y1, x2, y1, '#a855f7');
+      } 
+      else if (processMode === 'dehumid') {
+        ctx.strokeStyle = '#3b82f6'; // Blue
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+
+        drawArrowhead(ctx, x1, y1, x2, y2, '#3b82f6');
+      } 
+      else if (processMode === 'evaporative') {
+        ctx.strokeStyle = '#06b6d4'; // Cyan
+        
+        let startT = state1.tdb;
+        let endT = state2.tdb;
+        let twb_target = state1.twb; 
+
+        let psat_wb = getPsat(twb_target);
+        let w_sat_wb = getW(psat_wb, P);
+
+        let step = (endT - startT) / 10;
+        ctx.beginPath();
+        for (let i = 0; i <= 10; i++) {
+          let t = startT + i * step;
+          let num = (1.006 + 1.86 * w_sat_wb) * (twb_target - t) + 2501 * w_sat_wb - 4.186 * twb_target * w_sat_wb;
+          let den = 2501 + 1.86 * t - 4.186 * twb_target;
+          let w = num / den;
+          
+          let xp = getX(t, width);
+          let yp = getY(w, height);
+          if (i === 0) ctx.moveTo(xp, yp);
+          else ctx.lineTo(xp, yp);
+        }
+        ctx.stroke();
+
+        drawArrowhead(ctx, x1, y1, x2, y2, '#06b6d4');
+      } 
+      else if (processMode === 'mixing') {
+        ctx.strokeStyle = '#10b981'; // Emerald
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      }
+
+      ctx.setLineDash([]); 
+    }
+
+    // Canvas arrow helper
+    function drawArrowhead(context, fromx, fromy, tox, toy, color) {
+      let dx = tox - fromx;
+      let dy = toy - fromy;
+      let angle = Math.atan2(dy, dx);
+      let len = Math.sqrt(dx * dx + dy * dy);
+      
+      let midX = fromx + dx * 0.5;
+      let midY = fromy + dy * 0.5;
+
+      context.save();
+      context.translate(midX, midY);
+      context.rotate(angle);
+      context.beginPath();
+      context.moveTo(-8, -5);
+      context.lineTo(0, 0);
+      context.lineTo(-8, 5);
+      context.strokeStyle = color;
+      context.lineWidth = 3.0;
+      context.stroke();
+      context.restore();
+    }
+
+    // Hover Crosshair Tracker with instant Enthalpy Correction calculation
+    function drawHoverCrosshair(width, height, P) {
+      if (!chartHoverState) return;
+
+      const { x, y, tdb, w, rh, twb, tdp, h, v } = chartHoverState;
+
+      // Ensure cursor is within axes boundary limits
+      if (x < padding.left || x > width - padding.right || y < padding.top || y > height - padding.bottom) {
+        return;
+      }
+
+      // Draw Crosshair Lines
+      ctx.lineWidth = 1.0;
+      ctx.strokeStyle = 'rgba(99, 102, 241, 0.6)'; 
+      ctx.setLineDash([3, 3]);
+
+      // Vertical line (dry bulb)
+      ctx.beginPath();
+      ctx.moveTo(x, height - padding.bottom);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+
+      // Horizontal line (humidity ratio)
+      ctx.beginPath();
+      ctx.moveTo(padding.left, y);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Little dot at hover junction
+      ctx.beginPath();
+      ctx.arc(x, y, 4, 0, 2 * Math.PI);
+      ctx.fillStyle = '#6366f1';
+      ctx.fill();
+
+      // Canvas mini HUD tooltip overlay
+      let hudW = 140;
+      let hudH = 122; // Extended slightly to fit Enthalpy Correction Δh
+      let hx = x + 15;
+      let hy = y - hudH - 15;
+
+      if (hx + hudW > width - padding.right) hx = x - hudW - 15;
+      if (hy < padding.top) hy = y + 15;
+
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.95)'; 
+      ctx.strokeStyle = '#4f46e5';
+      ctx.lineWidth = 1.0;
+      ctx.beginPath();
+      ctx.roundRect(hx, hy, hudW, hudH, 6);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 9px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(`CURSOR STATE:`, hx + 8, hy + 15);
+
+      ctx.font = '9px monospace';
+      ctx.fillStyle = '#e2e8f0'; 
+      ctx.fillText(`Tdb : ${formatProp(tdb, 'tdb')}`, hx + 8, hy + 30);
+      ctx.fillText(`RH  : ${formatProp(rh, 'rh')}`, hx + 8, hy + 45);
+      ctx.fillText(`W   : ${formatProp(w, 'w')}`, hx + 8, hy + 60);
+      ctx.fillText(`Twb : ${formatProp(twb, 'twb')}`, hx + 8, hy + 75);
+      ctx.fillText(`h   : ${formatProp(h, 'h')}`, hx + 8, hy + 90);
+      
+      // Calculate instant Enthalpy correction Δh
+      let psat_wb = getPsat(twb);
+      let w_sat_wb = getW(psat_wb, P);
+      let h_sat_wb = getEnthalpy(twb, w_sat_wb);
+      let deltaH = h - h_sat_wb;
+      ctx.fillText(`Δh  : ${formatProp(deltaH, 'h')}`, hx + 8, hy + 105);
+    }
+
+
+    // ==========================================
+    // DATA BINDING AND EVENT LISTENERS
+    // ==========================================
+
+    const elInput = document.getElementById('elevationInput');
+    const elUnit = document.getElementById('elevationUnit');
+    const pressureText = document.getElementById('pressureText');
+    const processModeSelect = document.getElementById('processMode');
+    const processExplanation = document.getElementById('processExplanation');
+    const mixRatioSlider = document.getElementById('mixRatio');
+    const mixingControls = document.getElementById('mixingControls');
+
+    const inputTypeSelect = document.getElementById('inputTypeSelect');
+    const inputVar1 = document.getElementById('inputVar1');
+    const inputVar2 = document.getElementById('inputVar2');
+    const inputLabel1 = document.getElementById('inputLabel1');
+    const inputLabel2 = document.getElementById('inputLabel2');
+    const inputUnit1 = document.getElementById('inputUnit1');
+    const inputUnit2 = document.getElementById('inputUnit2');
+
+    const propTdb = document.getElementById('propTdb');
+    const propTwb = document.getElementById('propTwb');
+    const propTdp = document.getElementById('propTdp');
+    const propRH = document.getElementById('propRH');
+    const propW = document.getElementById('propW');
+    const propWkg = document.getElementById('propWkg');
+    const propH = document.getElementById('propH');
+    const propVol = document.getElementById('propVol');
+    const boundaryWarning = document.getElementById('boundaryWarning');
+
+    const tabState1 = document.getElementById('tabState1');
+    const tabState2 = document.getElementById('tabState2');
+
+    const zoomInBtn = document.getElementById('zoomInBtn');
+    const zoomOutBtn = document.getElementById('zoomOutBtn');
+    const zoomResetBtn = document.getElementById('zoomResetBtn');
+    const zoomLevelIndicator = document.getElementById('zoomLevelIndicator');
+
+    // UI Initializers & Event Attachments
+    function init() {
+      // Setup event listeners for inputs
+      elInput.addEventListener('input', handleElevationChange);
+      processModeSelect.addEventListener('change', handleProcessModeChange);
+      mixRatioSlider.addEventListener('input', handleMixRatioChange);
+      inputTypeSelect.addEventListener('change', handleInputTypeChange);
+      
+      inputVar1.addEventListener('input', handlePropertyInput);
+      inputVar2.addEventListener('input', handlePropertyInput);
+
+      tabState1.addEventListener('click', () => switchStateTab(1));
+      tabState2.addEventListener('click', () => switchStateTab(2));
+
+      document.getElementById('unitMetricBtn').addEventListener('click', () => toggleUnits('SI'));
+      document.getElementById('unitImperialBtn').addEventListener('click', () => toggleUnits('IP'));
+
+      // Legend highlights
+      document.querySelectorAll('[data-highlight]').forEach(btn => {
+        btn.addEventListener('mouseenter', (e) => {
+          activeHighlight = e.target.getAttribute('data-highlight');
+          drawChart();
+        });
+        btn.addEventListener('mouseleave', () => {
+          activeHighlight = null;
+          drawChart();
+        });
+      });
+
+      // Canvas Interactive events
+      canvas.style.cursor = 'grab';
+      
+      canvas.addEventListener('mousemove', handleCanvasMouseMove);
+      canvas.addEventListener('mouseleave', () => {
+        chartHoverState = null;
+        drawChart();
+        updateHUDWithState(activeTab === 1 ? state1 : state2);
+      });
+
+      // Drag to Pan & Click implementation
+      canvas.addEventListener('mousedown', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mX = e.clientX - rect.left;
+        const mY = e.clientY - rect.top;
+
+        // Check if cursor is inside the plotting bounds to allow drag/pan
+        if (mX >= padding.left && mX <= rect.width - padding.right &&
+            mY >= padding.top && mY <= rect.height - padding.bottom) {
+          isMouseDown = true;
+          isDragging = false;
+          dragStartX = e.clientX;
+          dragStartY = e.clientY;
+          initialPanX = panX;
+          initialPanY = panY;
+          canvas.style.cursor = 'grabbing';
+        }
+      });
+
+      canvas.addEventListener('mousemove', (e) => {
+        if (!isMouseDown) return;
+
+        const dx = e.clientX - dragStartX;
+        const dy = e.clientY - dragStartY;
+
+        // Threshold for drag detection
+        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+          isDragging = true;
+        }
+
+        if (isDragging) {
+          panX = initialPanX + dx;
+          panY = initialPanY + dy;
+          const rect = canvas.getBoundingClientRect();
+          clampPan(rect.width, rect.height);
+          drawChart();
+        }
+      });
+
+      canvas.addEventListener('mouseup', (e) => {
+        if (isMouseDown) {
+          isMouseDown = false;
+          canvas.style.cursor = 'grab';
+          if (!isDragging) {
+            handleCanvasClick(e);
+          }
+        }
+      });
+
+      // Mouse Wheel Zoom
+      canvas.addEventListener('wheel', handleCanvasWheel, { passive: false });
+
+      // Mobile Touch support for pan and zoom
+      canvas.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+          const rect = canvas.getBoundingClientRect();
+          const touch = e.touches[0];
+          const mX = touch.clientX - rect.left;
+          const mY = touch.clientY - rect.top;
+
+          if (mX >= padding.left && mX <= rect.width - padding.right &&
+              mY >= padding.top && mY <= rect.height - padding.bottom) {
+            isMouseDown = true;
+            isDragging = false;
+            dragStartX = touch.clientX;
+            dragStartY = touch.clientY;
+            initialPanX = panX;
+            initialPanY = panY;
+          }
+        }
+      }, { passive: true });
+
+      canvas.addEventListener('touchmove', (e) => {
+        if (isMouseDown && e.touches.length === 1) {
+          const touch = e.touches[0];
+          const dx = touch.clientX - dragStartX;
+          const dy = touch.clientY - dragStartY;
+
+          if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+            isDragging = true;
+          }
+
+          if (isDragging) {
+            panX = initialPanX + dx;
+            panY = initialPanY + dy;
+            const rect = canvas.getBoundingClientRect();
+            clampPan(rect.width, rect.height);
+            drawChart();
+          }
+        }
+      }, { passive: true });
+
+      canvas.addEventListener('touchend', (e) => {
+        if (isMouseDown) {
+          isMouseDown = false;
+          if (!isDragging) {
+            const rect = canvas.getBoundingClientRect();
+            const lastTouch = e.changedTouches[0];
+            const mX = lastTouch.clientX - rect.left;
+            const mY = lastTouch.clientY - rect.top;
+            
+            let tdb = getTdbFromX(mX, rect.width);
+            let w = getWFromY(mY, rect.height);
+            const P = getPressureAtElevation(currentElevation);
+
+            if (tdb >= T_MIN_SI && tdb <= T_MAX_SI && w >= W_MIN_SI && w <= W_MAX_SI) {
+              let solved = solveState(tdb, w, 'db-w', P);
+              if (activeTab === 1) state1 = solved;
+              else state2 = solved;
+              syncProcessConstraints();
+              calculateMixingState();
+              loadStateValuesToInputs();
+              updateUI();
+            }
+          }
+        }
+      });
+
+      // Floating Button Listeners
+      zoomInBtn.addEventListener('click', () => {
+        zoomScale = Math.min(zoomScale * 1.3, 10.0);
+        const rect = canvas.getBoundingClientRect();
+        clampPan(rect.width, rect.height);
+        zoomLevelIndicator.textContent = `${zoomScale.toFixed(1)}x`;
+        drawChart();
+      });
+
+      zoomOutBtn.addEventListener('click', () => {
+        zoomScale = Math.max(zoomScale / 1.3, 1.0);
+        const rect = canvas.getBoundingClientRect();
+        clampPan(rect.width, rect.height);
+        zoomLevelIndicator.textContent = `${zoomScale.toFixed(1)}x`;
+        drawChart();
+      });
+
+      zoomResetBtn.addEventListener('click', () => {
+        zoomScale = 1.0;
+        panX = 0;
+        panY = 0;
+        zoomLevelIndicator.textContent = `1.0x`;
+        drawChart();
+      });
+
+      // Window resize adaptation
+      window.addEventListener('resize', drawChart);
+
+      // Initial layout loads
+      syncElevationDisplay();
+      updateInputFormLabels();
+      loadStateValuesToInputs();
+      calculateMixingState();
+      updateUI();
+    }
+
+    // Clamp panning offsets to stay within standard visual frame boundaries
+    function clampPan(width, height) {
+      if (zoomScale <= 1.0) {
+        panX = 0;
+        panY = 0;
+        return;
+      }
+      let plot_width = width - padding.left - padding.right;
+      let plot_height = height - padding.top - padding.bottom;
+      
+      let maxPanX = plot_width * (zoomScale - 1) / 2 + 100;
+      let maxPanY = plot_height * (zoomScale - 1) / 2 + 100;
+
+      panX = Math.min(Math.max(panX, -maxPanX), maxPanX);
+      panY = Math.min(Math.max(panY, -maxPanY), maxPanY);
+    }
+
+    // Zoom centered exactly on the current mouse cursor screen location
+    function handleCanvasWheel(e) {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const mX = e.clientX - rect.left;
+      const mY = e.clientY - rect.top;
+
+      let stdX = getStdXFromScreen(mX, rect.width);
+      let stdY = getStdYFromScreen(mY, rect.height);
+
+      let zoomFactor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+      zoomScale = Math.min(Math.max(zoomScale * zoomFactor, 1.0), 10.0);
+
+      let plot_width = rect.width - padding.left - padding.right;
+      let cx = padding.left + plot_width / 2;
+      let new_x_unpanned = cx + (stdX - cx) * zoomScale;
+
+      let plot_height = rect.height - padding.top - padding.bottom;
+      let cy = padding.top + plot_height / 2;
+      let new_y_unpanned = cy + (stdY - cy) * zoomScale;
+
+      panX = mX - new_x_unpanned;
+      panY = mY - new_y_unpanned;
+
+      clampPan(rect.width, rect.height);
+      zoomLevelIndicator.textContent = `${zoomScale.toFixed(1)}x`;
+      
+      handleCanvasMouseMove(e);
+    }
+
+    // Handles altitude / pressure elevation modifications
+    function handleElevationChange() {
+      let val = parseFloat(elInput.value) || 0;
+      currentElevation = revertValue(val, 'elevation', currentUnits);
+      
+      let P = getPressureAtElevation(currentElevation);
+      pressureText.textContent = formatProp(P, 'pressure');
+
+      recalculateAllStates();
+      updateUI();
+    }
+
+    function syncElevationDisplay() {
+      let val = convertValue(currentElevation, 'elevation', currentUnits);
+      elInput.value = Math.round(val);
+      elUnit.textContent = currentUnits === 'SI' ? 'm' : 'ft';
+
+      let P = getPressureAtElevation(currentElevation);
+      pressureText.textContent = formatProp(P, 'pressure');
+    }
+
+    function toggleUnits(targetUnit) {
+      if (currentUnits === targetUnit) return;
+      
+      const metricBtn = document.getElementById('unitMetricBtn');
+      const imperialBtn = document.getElementById('unitImperialBtn');
+      if (targetUnit === 'SI') {
+        metricBtn.className = "px-3 py-1 rounded text-xs font-semibold transition bg-indigo-600 text-white";
+        imperialBtn.className = "px-3 py-1 rounded text-xs font-semibold transition text-slate-400 hover:text-slate-200";
+      } else {
+        imperialBtn.className = "px-3 py-1 rounded text-xs font-semibold transition bg-indigo-600 text-white";
+        metricBtn.className = "px-3 py-1 rounded text-xs font-semibold transition text-slate-400 hover:text-slate-200";
+      }
+
+      currentUnits = targetUnit;
+      syncElevationDisplay();
+      updateInputFormLabels();
+      loadStateValuesToInputs();
+      updateUI();
+    }
+
+    // Switch between analyzing State 1 and State 2
+    function switchStateTab(tabIndex) {
+      activeTab = tabIndex;
+      if (tabIndex === 1) {
+        tabState1.className = "flex-1 pb-2 text-sm font-bold border-b-2 border-indigo-500 text-sky-400 flex items-center justify-center gap-1.5";
+        tabState2.className = "flex-1 pb-2 text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-amber-400 flex items-center justify-center gap-1.5";
+      } else {
+        tabState2.className = "flex-1 pb-2 text-sm font-bold border-b-2 border-indigo-500 text-amber-400 flex items-center justify-center gap-1.5";
+        tabState1.className = "flex-1 pb-2 text-sm font-bold border-b-2 border-transparent text-slate-400 hover:text-sky-400 flex items-center justify-center gap-1.5";
+      }
+      loadStateValuesToInputs();
+      updateUI();
+    }
+
+    // Set interactive labels on input configurations
+    function updateInputFormLabels() {
+      const type = inputTypeSelect.value;
+      if (type === 'db-rh') {
+        inputLabel1.innerHTML = `Dry Bulb Temp`;
+        inputLabel2.innerHTML = `Relative Humidity`;
+        inputUnit1.textContent = currentUnits === 'SI' ? '°C' : '°F';
+        inputUnit2.textContent = '%';
+      } else if (type === 'db-wb') {
+        inputLabel1.innerHTML = `Dry Bulb Temp`;
+        inputLabel2.innerHTML = `Wet Bulb Temp`;
+        inputUnit1.textContent = currentUnits === 'SI' ? '°C' : '°F';
+        inputUnit2.textContent = currentUnits === 'SI' ? '°C' : '°F';
+      } else if (type === 'db-dp') {
+        inputLabel1.innerHTML = `Dry Bulb Temp`;
+        inputLabel2.innerHTML = `Dew Point Temp`;
+        inputUnit1.textContent = currentUnits === 'SI' ? '°C' : '°F';
+        inputUnit2.textContent = currentUnits === 'SI' ? '°C' : '°F';
+      } else if (type === 'db-w') {
+        inputLabel1.innerHTML = `Dry Bulb Temp`;
+        inputLabel2.innerHTML = `Humidity Ratio`;
+        inputUnit1.textContent = currentUnits === 'SI' ? '°C' : '°F';
+        inputUnit2.textContent = currentUnits === 'SI' ? 'g/kg' : 'gr/lb';
+      }
+    }
+
+    // Load active state properties directly into text input elements
+    function loadStateValuesToInputs() {
+      const state = activeTab === 1 ? state1 : state2;
+      const type = inputTypeSelect.value;
+
+      let v1 = convertValue(state.tdb, 'tdb', currentUnits);
+      let v2 = 50.0;
+
+      if (type === 'db-rh') {
+        v2 = state.rh;
+      } else if (type === 'db-wb') {
+        v2 = convertValue(state.twb, 'twb', currentUnits);
+      } else if (type === 'db-dp') {
+        v2 = convertValue(state.tdp, 'tdp', currentUnits);
+      } else if (type === 'db-w') {
+        v2 = convertValue(state.w, 'w', currentUnits);
+      }
+
+      inputVar1.value = v1.toFixed(1);
+      inputVar2.value = v2.toFixed(1);
+    }
+
+    function handleInputTypeChange() {
+      updateInputFormLabels();
+      loadStateValuesToInputs();
+    }
+
+    // When typing values inside state inputs
+    function handlePropertyInput() {
+      let rawV1 = parseFloat(inputVar1.value);
+      let rawV2 = parseFloat(inputVar2.value);
+
+      if (isNaN(rawV1) || isNaN(rawV2)) return;
+
+      const type = inputTypeSelect.value;
+      const P = getPressureAtElevation(currentElevation);
+
+      // Revert standard metric internals
+      let v1 = revertValue(rawV1, 'tdb', currentUnits);
+      let v2;
+
+      if (type === 'db-rh') {
+        v2 = rawV2;
+      } else if (type === 'db-wb' || type === 'db-dp') {
+        v2 = revertValue(rawV2, 'tdb', currentUnits);
+      } else if (type === 'db-w') {
+        v2 = revertValue(rawV2, 'w', currentUnits);
+      }
+
+      // Solve state
+      let solved = solveState(v1, v2, type, P);
+
+      // Check bounds mapping
+      if (solved.rh >= 99.9 && type !== 'db-rh' && type !== 'db-w') {
+        boundaryWarning.classList.remove('hidden');
+      } else {
+        boundaryWarning.classList.add('hidden');
+      }
+
+      // Save back to active state object
+      if (activeTab === 1) {
+        state1 = solved;
+      } else {
+        state2 = solved;
+      }
+
+      syncProcessConstraints();
+      calculateMixingState();
+      updateUI();
+    }
+
+    // Adjust dependent states depending on process constraints selected
+    function syncProcessConstraints() {
+      const P = getPressureAtElevation(currentElevation);
+      if (processMode === 'sensible') {
+        state2 = solveState(state2.tdb, state1.w, 'db-w', P);
+      } else if (processMode === 'evaporative') {
+        state2 = solveState(state2.tdb, state1.twb, 'db-wb', P);
+      }
+    }
+
+    // Multi-stream pressure balance & adiabatic mass mixing
+    function calculateMixingState() {
+      let r1 = mixRatio;
+      let r2 = 1.0 - r1;
+
+      let tdb3 = r1 * state1.tdb + r2 * state2.tdb;
+      let w3 = r1 * state1.w + r2 * state2.w;
+
+      const P = getPressureAtElevation(currentElevation);
+      state3 = solveState(tdb3, w3, 'db-w', P);
+    }
+
+    // Complete recalculation of states on altitude/pressure modifications
+    function recalculateAllStates() {
+      const P = getPressureAtElevation(currentElevation);
+      state1 = solveState(state1.tdb, state1.w, 'db-w', P);
+      state2 = solveState(state2.tdb, state2.w, 'db-w', P);
+      syncProcessConstraints();
+      calculateMixingState();
+    }
+
+    // Handles process mode selections
+    function handleProcessModeChange() {
+      processMode = processModeSelect.value;
+      
+      const detailsList = document.querySelectorAll('.hide-unless-mixing');
+      if (processMode === 'mixing') {
+        mixingControls.classList.remove('hidden');
+        detailsList.forEach(el => el.classList.remove('hidden'));
+      } else {
+        mixingControls.classList.add('hidden');
+        detailsList.forEach(el => el.classList.add('hidden'));
+      }
+
+      // Update explanations text
+      let expl = "";
+      switch (processMode) {
+        case 'none':
+          expl = "Observe and compare properties of separate air states. Change tabs below to modify individual variables.";
+          break;
+        case 'sensible':
+          expl = "<strong>Sensible Heating/Cooling</strong> occurs when energy is added or removed without moisture transfer. Path is completely horizontal (const Humidity Ratio $W$).";
+          break;
+        case 'dehumid':
+          expl = "<strong>Cooling & Dehumidification</strong> occurs as warm, moist air cools below its dew point. Condensation falls out, reducing the overall humidity ratio.";
+          break;
+        case 'evaporative':
+          expl = "<strong>Adiabatic Humidification</strong> occurs when liquid water is injected into dry air. Water evaporates, using sensible heat from air, lowering DB temp while raising humidity along a constant enthalpy/wet-bulb path.";
+          break;
+        case 'mixing':
+          expl = "<strong>Adiabatic Mixing</strong> models the junction of two distinct airflow streams (e.g. Return Air + Outside Air in HVAC system). The mixed state is situated directly on the line connecting State 1 and State 2.";
+          break;
+      }
+      processExplanation.innerHTML = expl;
+
+      syncProcessConstraints();
+      calculateMixingState();
+      updateUI();
+    }
+
+    function handleMixRatioChange() {
+      mixRatio = parseFloat(mixRatioSlider.value) / 100.0;
+      document.getElementById('ratio1Val').textContent = Math.round(mixRatio * 100);
+      document.getElementById('ratio2Val').textContent = Math.round((1 - mixRatio) * 100);
+      calculateMixingState();
+      updateUI();
+    }
+
+    // Canvas Mouse Interactives
+    function handleCanvasMouseMove(e) {
+      if (isMouseDown) return; 
+
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      let tdb = getTdbFromX(x, rect.width);
+      let w = getWFromY(y, rect.height);
+      const P = getPressureAtElevation(currentElevation);
+
+      // Limit values to chart boundaries
+      if (tdb >= T_MIN_SI && tdb <= T_MAX_SI && w >= W_MIN_SI && w <= W_MAX_SI) {
+        let psat = getPsat(tdb);
+        let wsat = getW(psat, P);
+
+        // Clip cursor reading above saturation curve
+        if (w > wsat) {
+          w = wsat;
+        }
+
+        let pw = getPw(w, P);
+        let rh = Math.min((pw / psat) * 100.0, 100.0);
+        let tdp = getTdp(pw);
+        let h = getEnthalpy(tdb, w);
+        let v = getSpecificVolume(tdb, w, P);
+        let twb = getTwb(tdb, w, P);
+
+        chartHoverState = { x, y, tdb, w, rh, twb, tdp, h, v };
+        
+        updateHUDWithState(chartHoverState);
+        drawChart();
+      }
+    }
+
+    // Click canvas to plot / position state nodes directly
+    function handleCanvasClick(e) {
+      if (!chartHoverState) return;
+
+      const P = getPressureAtElevation(currentElevation);
+      let solved = solveState(chartHoverState.tdb, chartHoverState.w, 'db-w', P);
+
+      if (activeTab === 1) {
+        state1 = solved;
+      } else {
+        state2 = solved;
+      }
+
+      syncProcessConstraints();
+      calculateMixingState();
+      loadStateValuesToInputs();
+      updateUI();
+    }
+
+    // Update real-time HUD metrics
+    function updateHUDWithState(state) {
+      document.getElementById('hudTdb').textContent = formatProp(state.tdb, 'tdb');
+      document.getElementById('hudRH').textContent = formatProp(state.rh, 'rh');
+      document.getElementById('hudW').textContent = formatProp(state.w, 'w');
+      document.getElementById('hudTwb').textContent = formatProp(state.twb, 'twb');
+      document.getElementById('hudTdp').textContent = formatProp(state.tdp, 'tdp');
+      document.getElementById('hudH').textContent = formatProp(state.h, 'h');
+      document.getElementById('hudVol').textContent = formatProp(state.v, 'v');
+    }
+
+    // Refresh overall page UI & Card elements
+    function updateUI() {
+      // Draw Canvas Chart
+      drawChart();
+
+      // Update Card Labels/Values
+      let activeState = activeTab === 1 ? state1 : state2;
+      
+      propTdb.textContent = formatProp(activeState.tdb, 'tdb');
+      propTwb.textContent = formatProp(activeState.twb, 'twb');
+      propTdp.textContent = formatProp(activeState.tdp, 'tdp');
+      propRH.textContent = formatProp(activeState.rh, 'rh');
+      propW.textContent = formatProp(activeState.w, 'w');
+      propWkg.textContent = formatProp(activeState.w, 'w_raw');
+      propH.textContent = formatProp(activeState.h, 'h');
+      propVol.textContent = formatProp(activeState.v, 'v');
+
+      updateHUDWithState(activeState);
+    }
+
+    // Start App
+    window.onload = function() {
+      init();
+    };
+  </script>
+</body>
+</html>

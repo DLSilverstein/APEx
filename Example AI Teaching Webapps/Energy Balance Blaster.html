@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Energy Balance Blaster</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&display=swap');
+        
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: 'Fira Code', monospace;
+            overflow: hidden;
+            touch-action: none; 
+        }
+
+        canvas {
+            image-rendering: pixelated;
+            display: block;
+            margin: 0 auto;
+            background: #020617;
+            border: 4px solid #334155;
+            border-radius: 8px;
+            max-width: 100%;
+            max-height: 65vh;
+            touch-action: none;
+        }
+
+        .briefing-card {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 2px solid #3b82f6;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+        }
+
+        .math-symbol {
+            font-family: 'Times New Roman', serif;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div id="game-container" class="w-full max-w-2xl select-none">
+        <!-- Top HUD -->
+        <div class="mb-4 bg-slate-800 p-4 rounded-lg shadow-xl border-l-4 border-blue-500 flex justify-between items-center">
+            <div>
+                <h1 class="text-xs font-bold text-blue-400 uppercase tracking-tighter">Energy Balance Blaster</h1>
+                <p id="current-scenario-title" class="text-sm font-semibold italic text-slate-300">Awaiting Mission...</p>
+            </div>
+            <div class="text-right">
+                <div class="text-green-400 font-bold text-lg leading-none">SCORE: <span id="score">0</span></div>
+                <div class="text-blue-400 text-xs font-bold uppercase">LEVEL: <span id="level">1</span></div>
+            </div>
+        </div>
+
+        <div class="relative">
+            <canvas id="gameCanvas"></canvas>
+            
+            <!-- Interlude / Briefing Overlay -->
+            <div id="briefing-overlay" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/95 rounded-lg p-6">
+                <div class="briefing-card p-6 rounded-xl w-full max-w-md text-center transform transition-all">
+                    <h2 class="text-blue-400 font-bold text-xl mb-3 tracking-widest uppercase underline decoration-2 underline-offset-8">Mission Briefing</h2>
+                    <p id="briefing-text" class="text-sm text-slate-200 leading-relaxed mb-4 italic">
+                        Analyzing process parameters...
+                    </p>
+                    <div class="bg-slate-800/50 p-4 rounded border border-slate-700 mb-4 text-left">
+                        <p class="text-[10px] text-red-400 font-bold uppercase mb-2">Standard Convention:</p>
+                        <p class="text-sm font-serif text-white mb-2 text-center italic">
+                            Q̇ + Ẇ - ΔḢ - ΔĖk - ΔĖp = 0
+                        </p>
+                        <p class="text-xs text-slate-400">Identify and blast all terms that are <span class="text-white font-bold">ZERO</span> for this specific steady-state process.</p>
+                    </div>
+                    <div class="flex justify-around mb-6 text-[10px] text-slate-500 font-bold">
+                        <div>⌨️ [ARROWS] + [SPACE]</div>
+                        <div>📱 SLIDE + TAP</div>
+                    </div>
+                    <button id="start-btn" class="bg-blue-600 hover:bg-blue-500 text-white px-10 py-3 rounded-lg font-black transition-all transform hover:scale-105 active:scale-95 shadow-lg shadow-blue-900/50">
+                        START MISSION
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Game Over Overlay -->
+            <div id="overlay" class="absolute inset-0 flex flex-col items-center justify-center bg-red-950/90 rounded-lg hidden">
+                <h2 id="overlay-title" class="text-4xl font-black text-white mb-2 uppercase tracking-tighter">Mission Failure</h2>
+                <p id="overlay-msg" class="mb-8 text-center px-8 text-red-200 text-sm italic">Balance miscalculated.</p>
+                <button onclick="resetToBriefing()" class="bg-white text-red-950 px-8 py-3 rounded-full font-bold transition-all transform hover:scale-105">
+                    RETRY MISSION
+                </button>
+            </div>
+        </div>
+
+        <div class="mt-4 flex justify-between items-center text-[10px] text-slate-500 uppercase font-bold tracking-widest">
+            <div class="font-serif italic">Q̇ + Ẇ - ΔḢ - ΔĖk - ΔĖp = 0</div>
+            <div class="italic">Thermo Balance 101</div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const briefingOverlay = document.getElementById('briefing-overlay');
+        const briefingText = document.getElementById('briefing-text');
+        const currentScenarioTitle = document.getElementById('current-scenario-title');
+        const scoreEl = document.getElementById('score');
+        const levelEl = document.getElementById('level');
+        const overlay = document.getElementById('overlay');
+        const overlayTitle = document.getElementById('overlay-title');
+        const overlayMsg = document.getElementById('overlay-msg');
+        const startBtn = document.getElementById('start-btn');
+
+        canvas.width = 600;
+        canvas.height = 500;
+        
+        const TERM_WIDTH = 90;
+        const TERM_HEIGHT = 45;
+        const PLAYER_SPEED = 7;
+        const BULLET_SPEED = 12;
+        
+        let gameState = 'briefing'; 
+        let score = 0;
+        let level = 1;
+        let playerX = canvas.width / 2;
+        let bullets = [];
+        let terms = [];
+        let keys = {};
+        let currentScenario = null;
+
+        // Scenarios based on standard Thermo conventions
+        const scenarios = [
+            {
+                name: "Adiabatic Nozzle",
+                desc: "Fluid expands through a nozzle at steady state. It is well-insulated, performs no work, and height changes are negligible. Velocity increases significantly.",
+                zeros: ["Q̇", "Ẇ", "ΔĖp"],
+                equation: ["Q̇", "Ẇ", "ΔḢ", "ΔĖk", "ΔĖp"]
+            },
+            {
+                name: "Steam Turbine",
+                desc: "A steady-state steam turbine. It is assumed to be adiabatic (Q=0). Height and velocity changes of the fluid are negligible compared to the enthalpy drop.",
+                zeros: ["Q̇", "ΔĖk", "ΔĖp"],
+                equation: ["Q̇", "Ẇ", "ΔḢ", "ΔĖk", "ΔĖp"]
+            },
+            {
+                name: "Horizontal Condenser",
+                desc: "A horizontal heat exchanger where steam is condensed. No moving parts (Ẇ=0). Pipes are horizontal (Δz=0) and of constant diameter (Δv=0).",
+                zeros: ["Ẇ", "ΔĖk", "ΔĖp"],
+                equation: ["Q̇", "Ẇ", "ΔḢ", "ΔĖk", "ΔĖp"]
+            },
+            {
+                name: "Throttling Valve",
+                desc: "A steady-state throttling process. No heat is exchanged with the environment, no work is performed, and changes in kinetic and potential energy are negligible.",
+                zeros: ["Q̇", "Ẇ", "ΔĖk", "ΔĖp"],
+                equation: ["Q̇", "Ẇ", "ΔḢ", "ΔĖk", "ΔĖp"]
+            },
+            {
+                name: "Adiabatic Water Pump",
+                desc: "A pump raising water to a higher elevation. The process is adiabatic. The velocity at the inlet and outlet is identical (constant pipe diameter).",
+                zeros: ["Q̇", "ΔĖk"],
+                equation: ["Q̇", "Ẇ", "ΔḢ", "ΔĖk", "ΔĖp"]
+            }
+        ];
+
+        function prepareBriefing() {
+            gameState = 'briefing';
+            currentScenario = scenarios[Math.floor(Math.random() * scenarios.length)];
+            briefingText.innerText = currentScenario.desc;
+            currentScenarioTitle.innerText = currentScenario.name;
+            briefingOverlay.classList.remove('hidden');
+            overlay.classList.add('hidden');
+        }
+
+        function startMission() {
+            gameState = 'playing';
+            briefingOverlay.classList.add('hidden');
+            bullets = [];
+            terms = [];
+            
+            const fullEq = currentScenario.equation;
+            for (let i = 0; i < fullEq.length; i++) {
+                terms.push({
+                    id: fullEq[i],
+                    x: i * (TERM_WIDTH + 10) + 50,
+                    y: 40,
+                    dir: 1,
+                    isZero: currentScenario.zeros.includes(fullEq[i])
+                });
+            }
+        }
+
+        startBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            startMission();
+        });
+
+        window.addEventListener('keydown', e => {
+            keys[e.code] = true;
+            if (e.code === 'Space' && gameState === 'playing') e.preventDefault();
+        });
+        window.addEventListener('keyup', e => keys[e.code] = false);
+
+        function handleTouch(e) {
+            if (gameState !== 'playing') return;
+            const rect = canvas.getBoundingClientRect();
+            const touch = e.touches[0];
+            const scaleX = canvas.width / rect.width;
+            let targetX = (touch.clientX - rect.left) * scaleX;
+            playerX = Math.max(20, Math.min(canvas.width - 20, targetX));
+            e.preventDefault();
+        }
+
+        canvas.addEventListener('touchstart', (e) => {
+            if (gameState === 'playing') {
+                handleTouch(e);
+                fire();
+            }
+        }, {passive: false});
+
+        canvas.addEventListener('touchmove', handleTouch, {passive: false});
+
+        function fire() {
+            if (gameState !== 'playing') return;
+            if (bullets.length === 0 || bullets[bullets.length-1].y < canvas.height - 120) {
+                bullets.push({ x: playerX, y: canvas.height - 35 });
+            }
+        }
+
+        function update() {
+            if (gameState !== 'playing') return;
+
+            if (keys['ArrowLeft'] && playerX > 20) playerX -= PLAYER_SPEED;
+            if (keys['ArrowRight'] && playerX < canvas.width - 20) playerX += PLAYER_SPEED;
+            if (keys['Space']) fire();
+
+            bullets.forEach((b, index) => {
+                b.y -= BULLET_SPEED;
+                if (b.y < 0) bullets.splice(index, 1);
+            });
+
+            let descend = false;
+            terms.forEach(t => {
+                t.x += (1.8 + level * 0.4) * t.dir;
+                if (t.x > canvas.width - TERM_WIDTH || t.x < 0) {
+                    descend = true;
+                }
+            });
+
+            if (descend) {
+                terms.forEach(t => {
+                    t.dir *= -1;
+                    t.y += 35;
+                    t.x = Math.max(0, Math.min(canvas.width - TERM_WIDTH, t.x));
+                });
+            }
+
+            bullets.forEach((b, bIdx) => {
+                terms.forEach((t, tIdx) => {
+                    if (b.x > t.x && b.x < t.x + TERM_WIDTH && b.y > t.y && b.y < t.y + TERM_HEIGHT) {
+                        bullets.splice(bIdx, 1);
+                        if (t.isZero) {
+                            terms.splice(tIdx, 1);
+                            score += 100 * level;
+                            scoreEl.innerText = score;
+                            if (terms.filter(term => term.isZero).length === 0) {
+                                levelUp();
+                            }
+                        } else {
+                            endGame("TERMS REMAIN", `Invalid! "${t.id}" is a significant term for a ${currentScenario.name}.`);
+                        }
+                    }
+                });
+            });
+
+            terms.forEach(t => {
+                if (t.y > canvas.height - 80) {
+                    endGame("LIMIT REACHED", "The system reached the boundary without simplification.");
+                }
+            });
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Tech grid lines
+            ctx.strokeStyle = '#0f172a';
+            ctx.lineWidth = 1;
+            for(let i=0; i<canvas.width; i+=40) {
+                ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i, canvas.height); ctx.stroke();
+            }
+            for(let i=0; i<canvas.height; i+=40) {
+                ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(canvas.width, i); ctx.stroke();
+            }
+
+            if (gameState === 'briefing') return;
+
+            // Cannon
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#38bdf8';
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath();
+            ctx.moveTo(playerX, canvas.height - 5);
+            ctx.lineTo(playerX - 18, canvas.height - 35);
+            ctx.lineTo(playerX + 18, canvas.height - 35);
+            ctx.fill();
+
+            // Energy Pulsations
+            ctx.fillStyle = '#fbbf24';
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = '#fbbf24';
+            bullets.forEach(b => {
+                ctx.fillRect(b.x - 2, b.y, 4, 15);
+            });
+
+            // Math Terms
+            terms.forEach(t => {
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = '#38bdf8';
+                ctx.fillStyle = '#1e293b';
+                ctx.strokeStyle = '#38bdf8';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(t.x, t.y, TERM_WIDTH, TERM_HEIGHT);
+                ctx.fillRect(t.x, t.y, TERM_WIDTH, TERM_HEIGHT);
+
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#f8fafc';
+                ctx.font = 'bold 18px "Fira Code", serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(t.id, t.x + TERM_WIDTH/2, t.y + 30);
+            });
+            ctx.shadowBlur = 0;
+        }
+
+        function levelUp() {
+            level++;
+            levelEl.innerText = level;
+            prepareBriefing();
+        }
+
+        function endGame(title, msg) {
+            gameState = 'over';
+            overlay.classList.remove('hidden');
+            overlayTitle.innerText = title;
+            overlayMsg.innerText = msg;
+        }
+
+        function resetToBriefing() {
+            score = 0;
+            level = 1;
+            scoreEl.innerText = score;
+            levelEl.innerText = level;
+            prepareBriefing();
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        window.onload = () => {
+            prepareBriefing();
+            gameLoop();
+        };
+    </script>
+</body>
+</html>

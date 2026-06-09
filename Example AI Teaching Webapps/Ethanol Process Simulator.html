@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ethanol Production Flowsheet</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .flow-line {
+            position: absolute;
+            background-color: #9ca3af; /* gray-400 */
+            z-index: 1;
+        }
+        .stream-label {
+            position: absolute;
+            background-color: white;
+            padding: 4px 8px;
+            border: 1px solid #d1d5db; /* gray-300 */
+            border-radius: 6px;
+            font-size: 0.8rem;
+            line-height: 1.3;
+            text-align: left;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            white-space: pre;
+            z-index: 20;
+        }
+        .vessel {
+            border: 2px solid #374151; /* gray-700 */
+            background-color: #f3f4f6; /* gray-100 */
+            z-index: 10;
+        }
+        .vessel-title {
+            font-weight: 600;
+            background-color: #d1d5db; /* gray-300 */
+            padding: 2px 4px;
+            border-bottom: 2px solid #374151; /* gray-700 */
+        }
+        .arrow {
+            position: absolute;
+            width: 0;
+            height: 0;
+            z-index: 2;
+        }
+        .arrow-right {
+            border-top: 6px solid transparent;
+            border-bottom: 6px solid transparent;
+            border-left: 10px solid #6b7280; /* gray-500 */
+        }
+        .arrow-down {
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 10px solid #6b7280; /* gray-500 */
+        }
+        .arrow-up {
+             border-left: 6px solid transparent;
+             border-right: 6px solid transparent;
+             border-bottom: 10px solid #6b7280; /* gray-500 */
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <div class="bg-white shadow-lg rounded-xl p-6 mb-6">
+            <h1 class="text-2xl md:text-3xl font-bold text-center text-gray-800 mb-2">Ethanol Production Simulator</h1>
+            <p class="text-center text-gray-600 mb-6">Simulate the production of ethanol from sucrose and water via fermentation.</p>
+            
+            <!-- Inputs -->
+            <div class="flex flex-col md:flex-row justify-center items-center gap-6 mb-6">
+                <div class="w-full md:w-auto">
+                    <label for="sucrose-feed" class="block text-sm font-medium text-gray-700 mb-1">Sucrose Feed Rate (kg/hr):</label>
+                    <input type="number" id="sucrose-feed" value="1000" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div class="w-full md:w-auto">
+                    <label for="water-feed" class="block text-sm font-medium text-gray-700 mb-1">Water Feed Rate (kg/hr):</label>
+                    <input type="number" id="water-feed" value="5000" class="w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <button id="simulate-btn" class="w-full md:w-auto bg-indigo-600 text-white font-semibold py-2 px-6 rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out self-end">
+                    Simulate
+                </button>
+            </div>
+             <div id="error-message" class="text-center text-red-500 font-medium mt-4"></div>
+        </div>
+
+        <!-- Process Flowsheet -->
+        <div id="flowsheet-container" class="relative w-full bg-white shadow-xl rounded-xl border border-gray-200" style="height: 650px;">
+            <!-- This container will be dynamically populated with flowsheet elements -->
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const simulateBtn = document.getElementById('simulate-btn');
+            const flowsheetContainer = document.getElementById('flowsheet-container');
+            
+            // --- CONSTANTS ---
+            const MW_SUCROSE = 342.30; // g/mol
+            const MW_WATER = 18.015; // g/mol
+            const MW_ETHANOL = 46.07; // g/mol
+            const MW_CO2 = 44.01; // g/mol
+            const REACTION_CONVERSION = 0.95; // 95% conversion of sucrose
+            const YEAST_LOADING = 0.05; // 5% of total feed weight
+            const DISTILLATION_ETHANOL_PURITY = 0.956; // Azeotrope
+            const DISTILLATION_ETHANOL_RECOVERY = 0.99; // 99% of ethanol goes to distillate
+
+            function createFlowsheetElements() {
+                // Clear previous elements
+                flowsheetContainer.innerHTML = '';
+                
+                // Use container dimensions to position elements dynamically
+                const w = flowsheetContainer.clientWidth;
+                const h = flowsheetContainer.clientHeight;
+                const centerY = h * 0.5;
+
+                // Define vessel dimensions
+                const mixerW = 128, mixerH = 96;
+                const reactorW = 160, reactorH = 160;
+                const distW = 96, distH = 192;
+
+                // Define layout positions to prevent overlap
+                const mixerX = w * 0.20;
+                const reactorX = w * 0.5;
+                const distillationX = w * 0.80;
+
+                // Helper to create elements
+                const createElement = (tag, classes, id = '') => {
+                    const el = document.createElement(tag);
+                    el.className = classes;
+                    if (id) el.id = id;
+                    return el;
+                };
+
+                // Create Vessels
+                const mixer = createElement('div', 'vessel absolute flex flex-col items-center justify-center rounded-lg', 'mixer');
+                mixer.innerHTML = '<div class="vessel-title w-full text-center">Mixer</div><div class="p-2 text-xs">M-101</div>';
+                mixer.style.width = `${mixerW}px`; mixer.style.height = `${mixerH}px`;
+                mixer.style.left = `${mixerX - (mixerW/2)}px`; mixer.style.top = `${centerY - (mixerH/2)}px`;
+
+                const reactor = createElement('div', 'vessel absolute flex flex-col items-center justify-center rounded-full', 'reactor');
+                reactor.innerHTML = '<div class="vessel-title w-full text-center rounded-t-full">Reactor</div><div class="p-2 text-sm">R-101</div>';
+                reactor.style.width = `${reactorW}px`; reactor.style.height = `${reactorH}px`;
+                reactor.style.left = `${reactorX - (reactorW/2)}px`; reactor.style.top = `${centerY - (reactorH/2)}px`;
+                
+                const distillation = createElement('div', 'vessel absolute flex flex-col items-center justify-center rounded-lg', 'distillation');
+                distillation.innerHTML = '<div class="vessel-title w-full text-center">Distillation</div><div class="p-2 text-xs">T-101</div>';
+                distillation.style.width = `${distW}px`; distillation.style.height = `${distH}px`;
+                distillation.style.left = `${distillationX - (distW/2)}px`; distillation.style.top = `${centerY - (distH/2)}px`;
+
+                // --- Create Lines and Arrows with Intersections ---
+                const lineThickness = 4;
+                const halfLine = lineThickness / 2;
+                const arrowLength = 10; // Width of arrow-right / height of arrow-down
+
+                // 1. Sucrose Feed (S1) -> Points right to Mixer Left Edge
+                const mixerLeft = mixerX - (mixerW/2);
+                const line1 = createElement('div', 'flow-line');
+                line1.style.left = '0px'; 
+                line1.style.top = `${centerY - 24 - halfLine}px`; 
+                line1.style.width = `${mixerLeft - arrowLength}px`; 
+                line1.style.height = `${lineThickness}px`;
+                
+                const arrow1 = createElement('div', 'arrow arrow-right');
+                arrow1.style.left = `${mixerLeft - arrowLength}px`; 
+                arrow1.style.top = `${centerY - 24 - 6}px`;
+
+                // 2. Water Feed (S2) -> Points down to Mixer Top Edge
+                const mixerTop = centerY - (mixerH/2);
+                const line2 = createElement('div', 'flow-line');
+                line2.style.left = `${mixerX - halfLine}px`; 
+                line2.style.top = `${h * 0.1}px`; 
+                line2.style.width = `${lineThickness}px`; 
+                line2.style.height = `${mixerTop - (h * 0.1) - arrowLength}px`;
+                
+                const arrow2 = createElement('div', 'arrow arrow-down');
+                arrow2.style.left = `${mixerX - 6}px`; 
+                arrow2.style.top = `${mixerTop - arrowLength}px`;
+
+                // 3. Mixer to Reactor (S3) -> Points right to Reactor Left Edge
+                const mixerRight = mixerX + (mixerW/2);
+                const reactorLeft = reactorX - (reactorW/2);
+                const line3 = createElement('div', 'flow-line');
+                line3.style.left = `${mixerRight}px`; 
+                line3.style.top = `${centerY - halfLine}px`; 
+                line3.style.width = `${reactorLeft - mixerRight - arrowLength}px`; 
+                line3.style.height = `${lineThickness}px`;
+                
+                const arrow3 = createElement('div', 'arrow arrow-right');
+                arrow3.style.left = `${reactorLeft - arrowLength}px`; 
+                arrow3.style.top = `${centerY - 6}px`;
+
+                // 4. Reactor to Distillation (S4) -> Points right to Distillation Left Edge
+                const reactorRight = reactorX + (reactorW/2);
+                const distLeft = distillationX - (distW/2);
+                const line4 = createElement('div', 'flow-line');
+                line4.style.left = `${reactorRight}px`; 
+                line4.style.top = `${centerY - halfLine}px`; 
+                line4.style.width = `${distLeft - reactorRight - arrowLength}px`; 
+                line4.style.height = `${lineThickness}px`;
+                
+                const arrow4 = createElement('div', 'arrow arrow-right');
+                arrow4.style.left = `${distLeft - arrowLength}px`; 
+                arrow4.style.top = `${centerY - 6}px`;
+                
+                // 5. Distillate Product (S5 - Ethanol) -> vertical up, then right
+                const line5 = createElement('div', 'flow-line');
+                line5.style.left = `${distillationX - halfLine}px`; 
+                line5.style.top = `${centerY - (distH/2) - (h*0.2)}px`; 
+                line5.style.width = `${lineThickness}px`; 
+                line5.style.height = `${h*0.2}px`;
+                
+                const arrow5 = createElement('div', 'arrow arrow-up');
+                arrow5.style.left = `${distillationX - 6}px`; 
+                arrow5.style.top = `${centerY - (distH/2) - (h*0.2) - 10}px`;
+                
+                const line5_2 = createElement('div', 'flow-line');
+                line5_2.style.left = `${distillationX}px`; 
+                line5_2.style.top = `${centerY - (distH/2) - (h*0.2) - halfLine}px`; 
+                line5_2.style.width = `${w * 0.15}px`; 
+                line5_2.style.height = `${lineThickness}px`;
+                
+                const arrow5_2 = createElement('div', 'arrow arrow-right');
+                arrow5_2.style.left = `${distillationX + w*0.15}px`; 
+                arrow5_2.style.top = `${centerY - (distH/2) - (h*0.2) - 6}px`;
+
+                // 6. Bottoms Product (S6 - Waste) -> vertical down
+                const line6 = createElement('div', 'flow-line');
+                line6.style.left = `${distillationX - halfLine}px`; 
+                line6.style.top = `${centerY + (distH/2)}px`; 
+                line6.style.width = `${lineThickness}px`; 
+                line6.style.height = `${h * 0.3}px`;
+                
+                const arrow6 = createElement('div', 'arrow arrow-down');
+                arrow6.style.left = `${distillationX - 6}px`; 
+                arrow6.style.top = `${centerY + (distH/2) + h * 0.3}px`;
+                
+                // 7. CO2 vent from Reactor (S7) -> vertical up
+                const line7 = createElement('div', 'flow-line');
+                line7.style.left = `${reactorX - halfLine}px`; 
+                line7.style.top = `${centerY - (reactorH/2) - (h*0.2)}px`; 
+                line7.style.height = `${h*0.2}px`; 
+                line7.style.width = `${lineThickness}px`;
+                
+                const arrow7 = createElement('div', 'arrow arrow-up');
+                arrow7.style.left = `${reactorX - 6}px`; 
+                arrow7.style.top = `${centerY - (reactorH/2) - (h*0.2) - 10}px`;
+
+                // Create Stream Labels
+                const s1 = createElement('div', 'stream-label', 's1-label'); s1.style.left = `${w * 0.02}px`; s1.style.top = `${centerY - 24 - 80}px`;
+                const s2 = createElement('div', 'stream-label', 's2-label'); s2.style.left = `${mixerX + 10}px`; s2.style.top = `${h * 0.15}px`;
+                const s3 = createElement('div', 'stream-label', 's3-label'); s3.style.left = `${(mixerX + reactorX)/2 - 60}px`; s3.style.top = `${centerY + 20}px`;
+                const s4 = createElement('div', 'stream-label', 's4-label'); s4.style.left = `${(reactorX + distillationX)/2 - 60}px`; s4.style.top = `${centerY + 20}px`;
+                const s5 = createElement('div', 'stream-label', 's5-label'); s5.style.left = `${distillationX + 20}px`; s5.style.top = `${centerY - (distH/2) - (h*0.2) - 60}px`;
+                const s6 = createElement('div', 'stream-label', 's6-label'); s6.style.left = `${distillationX + 15}px`; s6.style.top = `${centerY + (distH/2) + 20}px`;
+                const s7 = createElement('div', 'stream-label', 's7-label'); s7.style.left = `${reactorX + 15}px`; s7.style.top = `${centerY - (reactorH/2) - (h*0.2) - 50}px`;
+                
+                // Append all to container
+                flowsheetContainer.append(mixer, reactor, distillation, line1, arrow1, line2, arrow2, line3, arrow3, line4, arrow4, line5, line5_2, arrow5, arrow5_2, line6, arrow6, line7, arrow7, s1, s2, s3, s4, s5, s6, s7);
+            }
+
+            function runSimulation() {
+                // Get Inputs
+                const sucroseFeed = parseFloat(document.getElementById('sucrose-feed').value);
+                const waterFeed = parseFloat(document.getElementById('water-feed').value);
+                const errorMessage = document.getElementById('error-message');
+
+                if (isNaN(sucroseFeed) || isNaN(waterFeed) || sucroseFeed < 0 || waterFeed < 0) {
+                    errorMessage.textContent = "Please enter valid, non-negative numbers for feed rates.";
+                    return;
+                }
+                errorMessage.textContent = "";
+
+
+                // --- CALCULATIONS ---
+                // S1: Sucrose Feed
+                const s1 = { sucrose: sucroseFeed, water: 0, ethanol: 0, co2: 0, yeast: 0 };
+
+                // S2: Water Feed
+                const s2 = { sucrose: 0, water: waterFeed, ethanol: 0, co2: 0, yeast: 0 };
+                
+                // S3: Mixed Feed to Reactor
+                const yeastToAdd = (s1.sucrose + s2.water) * YEAST_LOADING;
+                const s3 = {
+                    sucrose: s1.sucrose,
+                    water: s2.water,
+                    ethanol: 0,
+                    co2: 0,
+                    yeast: yeastToAdd // Yeast is added conceptually before the reactor
+                };
+
+                // Reaction: C12H22O11 + H2O -> 4 C2H5OH + 4 CO2
+                const sucroseMoles = (s3.sucrose / MW_SUCROSE) * 1000; // in moles
+                const waterMoles = (s3.water / MW_WATER) * 1000; // in moles
+
+                // Assume sucrose is the limiting reactant
+                const sucroseMolesReacted = sucroseMoles * REACTION_CONVERSION;
+                const waterMolesReacted = sucroseMolesReacted; // 1:1 ratio
+                
+                const ethanolMolesProduced = sucroseMolesReacted * 4;
+                const co2MolesProduced = sucroseMolesReacted * 4;
+                
+                const ethanolMassProduced = (ethanolMolesProduced * MW_ETHANOL) / 1000; // kg
+                const co2MassProduced = (co2MolesProduced * MW_CO2) / 1000; // kg
+                const sucroseMassReacted = (sucroseMolesReacted * MW_SUCROSE) / 1000; // kg
+                const waterMassReacted = (waterMolesReacted * MW_WATER) / 1000; // kg
+                
+                // Check if enough water is available for the reaction
+                if (s3.water < waterMassReacted) {
+                    errorMessage.textContent = "Not enough water for the reaction. Increase water feed.";
+                    return;
+                }
+
+                // S4: Reactor Outlet to Distillation
+                const s4 = {
+                    sucrose: s3.sucrose - sucroseMassReacted,
+                    water: s3.water - waterMassReacted,
+                    ethanol: ethanolMassProduced,
+                    co2: 0, // CO2 is vented
+                    yeast: s3.yeast
+                };
+                
+                // S7: CO2 Vent
+                const s7 = { sucrose: 0, water: 0, ethanol: 0, co2: co2MassProduced, yeast: 0 };
+
+                // S5: Distillate Product (Overhead)
+                const ethanolToDistillate = s4.ethanol * DISTILLATION_ETHANOL_RECOVERY;
+                const waterToDistillate = ethanolToDistillate * (1 - DISTILLATION_ETHANOL_PURITY) / DISTILLATION_ETHANOL_PURITY;
+                const s5 = {
+                    sucrose: 0,
+                    water: waterToDistillate > 0 ? waterToDistillate : 0,
+                    ethanol: ethanolToDistillate,
+                    co2: 0,
+                    yeast: 0
+                };
+                
+                // S6: Bottoms Product (Waste)
+                const s6 = {
+                    sucrose: s4.sucrose,
+                    water: s4.water - s5.water,
+                    ethanol: s4.ethanol - s5.ethanol,
+                    co2: 0,
+                    yeast: s4.yeast
+                };
+
+                // --- UPDATE UI ---
+                function formatStream(stream, name) {
+                    let text = `<strong>${name} (kg/hr)</strong>\n`;
+                    if (stream.sucrose > 0.1) text += `Sucrose: ${stream.sucrose.toFixed(1)}\n`;
+                    if (stream.water > 0.1) text += `Water: ${stream.water.toFixed(1)}\n`;
+                    if (stream.ethanol > 0.1) text += `Ethanol: ${stream.ethanol.toFixed(1)}\n`;
+                    if (stream.co2 > 0.1) text += `CO2: ${stream.co2.toFixed(1)}\n`;
+                    if (stream.yeast > 0.1) text += `Yeast: ${stream.yeast.toFixed(1)}\n`;
+                    const total = Object.values(stream).reduce((a, b) => a + b, 0);
+                    text += `<strong>Total: ${total.toFixed(1)}</strong>`;
+                    return text;
+                }
+
+                document.getElementById('s1-label').innerHTML = formatStream(s1, 'S1: Sucrose Feed');
+                document.getElementById('s2-label').innerHTML = formatStream(s2, 'S2: Water Feed');
+                document.getElementById('s3-label').innerHTML = formatStream(s3, 'S3: Reactor Feed');
+                document.getElementById('s4-label').innerHTML = formatStream(s4, 'S4: Dist. Feed');
+                document.getElementById('s5-label').innerHTML = formatStream(s5, 'S5: Ethanol Product');
+                document.getElementById('s6-label').innerHTML = formatStream(s6, 'S6: Bottoms');
+                document.getElementById('s7-label').innerHTML = formatStream(s7, 'S7: CO2 Vent');
+            }
+
+            // Initial Setup
+            createFlowsheetElements();
+            runSimulation(); // Run with default values
+            
+            // Event Listeners
+            simulateBtn.addEventListener('click', runSimulation);
+            window.addEventListener('resize', () => {
+                createFlowsheetElements();
+                runSimulation();
+            });
+        });
+    </script>
+</body>
+</html>
