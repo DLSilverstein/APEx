@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reynolds Number Explorer</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React and ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+
+        /* Custom Range Slider Styling */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            margin-top: -8px; 
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+        
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #cbd5e1;
+            border-radius: 2px;
+        }
+
+        .formula-container {
+            font-family: 'Times New Roman', serif;
+            font-size: 1.2rem;
+            font-style: italic;
+        }
+
+        .fraction {
+            display: inline-block;
+            vertical-align: middle;
+            text-align: center;
+        }
+
+        .fraction > span {
+            display: block;
+            padding: 0.1em;
+        }
+
+        .fraction span.numerator {
+            border-bottom: 2px solid currentColor;
+        }
+
+        .fraction span.denominator {
+            border-top: 0px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useMemo } = React;
+
+        // Fluid Database in CGS Units
+        // Density (rho): g/cm^3
+        // Dynamic Viscosity (mu): Poise (g/cm·s)
+        const FLUIDS = [
+            { id: 'water', name: 'Water (20°C)', rho: 0.998, mu: 0.010 },
+            { id: 'air', name: 'Air (20°C)', rho: 0.0012, mu: 0.00018 },
+            { id: 'honey', name: 'Honey', rho: 1.42, mu: 100.0 }, // Very viscous
+            { id: 'mercury', name: 'Mercury', rho: 13.53, mu: 0.015 },
+            { id: 'oil', name: 'Engine Oil (SAE 30)', rho: 0.9, mu: 2.9 },
+            { id: 'glycerin', name: 'Glycerin', rho: 1.26, mu: 14.9 }
+        ];
+
+        // Flow Regime Constants
+        const REGIMES = {
+            LAMINAR: { label: 'Laminar', color: 'text-emerald-600', bg: 'bg-emerald-100', border: 'border-emerald-500', desc: 'Smooth, parallel flow layers.' },
+            TRANSITIONAL: { label: 'Transitional', color: 'text-amber-600', bg: 'bg-amber-100', border: 'border-amber-500', desc: 'Unstable flow, mixing begins.' },
+            TURBULENT: { label: 'Turbulent', color: 'text-rose-600', bg: 'bg-rose-100', border: 'border-rose-500', desc: 'Chaotic, irregular fluctuations.' }
+        };
+
+        const FlowSimulation = ({ re, velocity }) => {
+            const canvasRef = useRef(null);
+            const animationRef = useRef(null);
+            
+            // Particles for the simulation
+            const particles = useRef([]);
+
+            useEffect(() => {
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                let width = canvas.width = canvas.offsetWidth;
+                let height = canvas.height = canvas.offsetHeight;
+
+                // Initialize particles
+                // We keep a constant number of streamlines/particles for visualization
+                const numParticles = 100;
+                if (particles.current.length === 0) {
+                    for (let i = 0; i < numParticles; i++) {
+                        particles.current.push({
+                            x: Math.random() * width,
+                            y: Math.random() * height,
+                            baseY: Math.random() * height, // Original stream line
+                            speedOffset: Math.random() * 0.5 + 0.5,
+                            phase: Math.random() * Math.PI * 2
+                        });
+                    }
+                }
+
+                const render = (time) => {
+                    ctx.clearRect(0, 0, width, height);
+                    
+                    // Pipe Walls
+                    ctx.fillStyle = '#e2e8f0';
+                    ctx.fillRect(0, 0, width, 10);
+                    ctx.fillRect(0, height - 10, width, 10);
+                    
+                    // Determine Flow Characteristics based on Re
+                    let turbulenceFactor = 0;
+                    if (re > 2000 && re < 4000) {
+                        // Linear interpolation for transitional
+                        turbulenceFactor = (re - 2000) / 2000; 
+                    } else if (re >= 4000) {
+                        turbulenceFactor = 1.0 + (re - 4000) / 10000; // Cap visually eventually
+                        if (turbulenceFactor > 3) turbulenceFactor = 3;
+                    }
+
+                    // Draw Flow
+                    ctx.lineWidth = 2;
+                    
+                    particles.current.forEach(p => {
+                        // Base speed scaled by velocity slider (visual only, clamped)
+                        // Logarithmic scaling for visual speed so high v doesn't blur everything
+                        const visualSpeed = Math.log(velocity + 1) * 2; 
+
+                        // Calculate speed multiplier (profile)
+                        let moveFactor = p.speedOffset; // Default random offset for turbulent
+
+                        if (re < 2000) {
+                            // Laminar: Parabolic velocity profile
+                            // V(r) = Vmax * (1 - r^2/R^2)
+                            // Particles in center move faster, walls slower
+                            const centerY = height / 2;
+                            const r = Math.abs(p.baseY - centerY);
+                            const R = height / 2;
+                            
+                            // Calculate parabolic factor: 1 at center, 0 at walls
+                            let parabolic = 1 - Math.pow(r / R, 2);
+                            
+                            // Clamp to ensure minimum movement for visual purposes (0.1)
+                            // We use the profile to determine speed instead of random offset
+                            moveFactor = Math.max(0.1, parabolic);
+                        }
+
+                        p.x += visualSpeed * moveFactor;
+
+                        // Wrap around
+                        if (p.x > width) {
+                            p.x = 0;
+                            // Reset Y on wrap for turbulent flows to simulate mixing
+                            if (turbulenceFactor > 0.5) {
+                                p.baseY = Math.random() * (height - 20) + 10;
+                            }
+                        }
+
+                        // Calculate Y position
+                        let currentY = p.baseY;
+
+                        if (re < 2000) {
+                            // Laminar: Parabolic velocity profile logic (visual approximation)
+                            // Particles in center move faster, but we just show straight lines
+                            // Color code by speed: Blue
+                            ctx.strokeStyle = 'rgba(59, 130, 246, 0.6)';
+                        } else {
+                            // Add sine wave perturbation for turbulence
+                            const wave = Math.sin((p.x * 0.05) + (time * 0.005) + p.phase);
+                            
+                            // Magnitude of chaos
+                            const chaos = (Math.random() - 0.5) * turbulenceFactor * 20;
+                            const waveMagnitude = turbulenceFactor * 10;
+
+                            currentY = p.baseY + (wave * waveMagnitude) + chaos;
+
+                            // Color code: darker/redder for turbulence
+                            if (re > 4000) {
+                                ctx.strokeStyle = `rgba(225, 29, 72, 0.6)`;
+                            } else {
+                                ctx.strokeStyle = `rgba(217, 119, 6, 0.6)`;
+                            }
+                        }
+
+                        // Clamp Y to stay inside pipe
+                        if (currentY < 12) currentY = 12;
+                        if (currentY > height - 12) currentY = height - 12;
+
+                        ctx.beginPath();
+                        ctx.moveTo(p.x - (visualSpeed * 4), p.prevY || currentY); // Trail effect
+                        ctx.lineTo(p.x, currentY);
+                        ctx.stroke();
+
+                        p.prevY = currentY;
+                    });
+
+                    animationRef.current = requestAnimationFrame(render);
+                };
+
+                animationRef.current = requestAnimationFrame(render);
+
+                const handleResize = () => {
+                    width = canvas.width = canvas.offsetWidth;
+                    height = canvas.height = canvas.offsetHeight;
+                };
+
+                window.addEventListener('resize', handleResize);
+                return () => {
+                    cancelAnimationFrame(animationRef.current);
+                    window.removeEventListener('resize', handleResize);
+                };
+            }, [re, velocity]);
+
+            return (
+                <canvas 
+                    ref={canvasRef} 
+                    className="w-full h-48 bg-white rounded-lg border border-slate-200 shadow-inner"
+                />
+            );
+        };
+
+        const App = () => {
+            // State
+            const [selectedFluidId, setSelectedFluidId] = useState('water');
+            const [diameter, setDiameter] = useState(2.5); // cm
+            const [velocity, setVelocity] = useState(50); // cm/s
+
+            // Derived Values
+            const fluid = useMemo(() => FLUIDS.find(f => f.id === selectedFluidId), [selectedFluidId]);
+            
+            // Kinematic Viscosity (nu) = mu / rho
+            const kinematicViscosity = fluid.mu / fluid.rho;
+
+            // Reynolds Number Calculation: Re = (rho * v * D) / mu
+            const reynoldsNumber = (fluid.rho * velocity * diameter) / fluid.mu;
+
+            // Determine Regime
+            let regime = REGIMES.LAMINAR;
+            if (reynoldsNumber >= 2000 && reynoldsNumber <= 4000) {
+                regime = REGIMES.TRANSITIONAL;
+            } else if (reynoldsNumber > 4000) {
+                regime = REGIMES.TURBULENT;
+            }
+
+            // Formatting helpers
+            const formatNumber = (num) => {
+                if (num >= 10000 || (num < 0.001 && num > 0)) return num.toExponential(2);
+                return num.toLocaleString('en-US', { maximumFractionDigits: 3 });
+            };
+
+            return (
+                <div className="min-h-screen p-4 md:p-8 flex flex-col items-center">
+                    <div className="max-w-5xl w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
+                        
+                        {/* Header Section */}
+                        <div className="lg:col-span-12 mb-4">
+                            <h1 className="text-3xl font-bold text-slate-800 flex items-center gap-3">
+                                <i className="ph ph-wave-sine text-blue-600"></i>
+                                Reynolds Number Explorer
+                            </h1>
+                            <p className="text-slate-500 mt-2">
+                                Explore how fluid properties, velocity, and pipe size affect flow regimes.
+                                All units are in <strong>CGS</strong> (Centimeter-Gram-Second).
+                            </p>
+                        </div>
+
+                        {/* Controls Column */}
+                        <div className="lg:col-span-4 space-y-6">
+                            
+                            {/* Fluid Selection */}
+                            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                                <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                                    <i className="ph ph-drop text-blue-500"></i> Fluid Selection
+                                </h2>
+                                <select 
+                                    value={selectedFluidId}
+                                    onChange={(e) => setSelectedFluidId(e.target.value)}
+                                    className="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none"
+                                >
+                                    {FLUIDS.map(f => (
+                                        <option key={f.id} value={f.id}>{f.name}</option>
+                                    ))}
+                                </select>
+
+                                {/* Fluid Properties Card */}
+                                <div className="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-100 space-y-2 text-sm">
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Density (&rho;):</span>
+                                        <span className="font-mono font-medium">{formatNumber(fluid.rho)} g/cm³</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Dyn. Viscosity (&mu;):</span>
+                                        <span className="font-mono font-medium">{formatNumber(fluid.mu)} P</span>
+                                    </div>
+                                    <div className="flex justify-between border-t border-slate-200 pt-2 mt-2">
+                                        <span className="text-slate-500">Kin. Viscosity (&nu;):</span>
+                                        <span className="font-mono font-medium">{formatNumber(kinematicViscosity)} St</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Sliders */}
+                            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-6">
+                                <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                                    <i className="ph ph-sliders text-blue-500"></i> Parameters
+                                </h2>
+                                
+                                {/* Diameter Slider */}
+                                <div>
+                                    <div className="flex justify-between mb-2">
+                                        <label className="text-slate-600 font-medium">Pipe Diameter (D)</label>
+                                        <span className="font-mono text-blue-600 font-bold bg-blue-50 px-2 rounded">{diameter.toFixed(1)} cm</span>
+                                    </div>
+                                    <input 
+                                        type="range" 
+                                        min="0.5" 
+                                        max="10.0" 
+                                        step="0.1"
+                                        value={diameter}
+                                        onChange={(e) => setDiameter(parseFloat(e.target.value))}
+                                    />
+                                    <div className="flex justify-between text-xs text-slate-400 mt-1">
+                                        <span>0.5 cm</span>
+                                        <span>10.0 cm</span>
+                                    </div>
+                                </div>
+
+                                {/* Velocity Slider */}
+                                <div>
+                                    <div className="flex justify-between mb-2">
+                                        <label className="text-slate-600 font-medium">Velocity (V)</label>
+                                        <span className="font-mono text-blue-600 font-bold bg-blue-50 px-2 rounded">{velocity.toFixed(0)} cm/s</span>
+                                    </div>
+                                    <input 
+                                        type="range" 
+                                        min="1" 
+                                        max="500" 
+                                        step="1"
+                                        value={velocity}
+                                        onChange={(e) => setVelocity(parseFloat(e.target.value))}
+                                    />
+                                    <div className="flex justify-between text-xs text-slate-400 mt-1">
+                                        <span>1 cm/s</span>
+                                        <span>500 cm/s</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Results Column */}
+                        <div className="lg:col-span-8 space-y-6">
+                            
+                            {/* Main Result Card */}
+                            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                                    <h2 className="text-lg font-semibold text-slate-800">Flow Analysis</h2>
+                                    <div className={`px-4 py-1.5 rounded-full border ${regime.bg} ${regime.border} ${regime.color} font-bold text-sm flex items-center gap-2 mt-2 md:mt-0`}>
+                                        <i className="ph-fill ph-circle"></i> {regime.label}
+                                    </div>
+                                </div>
+
+                                {/* Animation Canvas */}
+                                <div className="mb-6 relative">
+                                    <FlowSimulation re={reynoldsNumber} velocity={velocity} />
+                                    <div className="absolute top-2 left-2 bg-white/90 px-2 py-1 rounded text-xs text-slate-500 font-mono border shadow-sm">
+                                        Pipe Flow Cross-section
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                        <div className="text-sm text-slate-500 mb-1">Reynolds Number (Re)</div>
+                                        <div className="text-3xl font-bold text-slate-800 font-mono">
+                                            {formatNumber(reynoldsNumber)}
+                                        </div>
+                                        <div className="text-xs text-slate-400 mt-1">Dimensionless</div>
+                                    </div>
+                                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 flex flex-col justify-center">
+                                        <p className="text-sm text-slate-600">
+                                            {regime.desc}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Math & Theory */}
+                            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                                <h3 className="text-md font-semibold text-slate-700 mb-3">Mathematical Model</h3>
+                                <div className="flex flex-col md:flex-row items-center justify-around bg-slate-50 p-6 rounded-lg border border-slate-100">
+                                    
+                                    {/* The Formula */}
+                                    <div className="formula-container text-2xl text-slate-800 mb-4 md:mb-0">
+                                        Re = 
+                                        <div className="fraction">
+                                            <span className="numerator">&rho; &middot; V &middot; D</span>
+                                            <span className="denominator">&mu;</span>
+                                        </div>
+                                        =
+                                        <div className="fraction">
+                                            <span className="numerator">V &middot; D</span>
+                                            <span className="denominator">&nu;</span>
+                                        </div>
+
+                                    </div>
+
+                                    {/* The Substitution */}
+                                    <div className="hidden md:block h-12 w-px bg-slate-300 mx-4"></div>
+
+                                    <div className="text-slate-600 font-mono text-sm">
+                                        <div>&rho; = {formatNumber(fluid.rho)} g/cm³</div>
+                                        <div>V &nbsp;= {velocity} cm/s</div>
+                                        <div>D &nbsp;= {diameter} cm</div>
+                                        <div>&mu; &nbsp;= {formatNumber(fluid.mu)} P</div>
+                                    </div>
+                                </div>
+                                <div className="mt-4 text-sm text-slate-500">
+                                    <p className="mb-2"><strong>Thresholds:</strong></p>
+                                    <ul className="list-disc list-inside space-y-1 ml-2">
+                                        <li><span className="text-emerald-600 font-medium">Re &lt; 2000</span>: Laminar Flow (Viscous forces dominate)</li>
+                                        <li><span className="text-amber-600 font-medium">2000 &le; Re &le; 4000</span>: Transitional Flow</li>
+                                        <li><span className="text-rose-600 font-medium">Re &gt; 4000</span>: Turbulent Flow (Inertial forces dominate)</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

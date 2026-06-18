@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PFR Kinetics: NO2 + CO</title>
+    <style>
+        :root {
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --accent-color: #3b82f6;
+            --border-color: #e2e8f0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1000px;
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 24px;
+        }
+
+        @media (max-width: 800px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            padding: 24px;
+            border: 1px solid var(--border-color);
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            margin-top: 0;
+        }
+
+        .formula-box {
+            background-color: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 24px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        input[type=range] {
+            width: 100%;
+            height: 6px;
+            background: #e2e8f0;
+            border-radius: 5px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--accent-color);
+            cursor: pointer;
+            transition: background .15s ease-in-out;
+        }
+
+        input[type=range]::-webkit-slider-thumb:hover {
+            background: #2563eb;
+        }
+
+        .value-display {
+            float: right;
+            font-weight: 700;
+            color: var(--accent-color);
+        }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-top: 16px;
+            justify-content: center;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+
+        .color-box {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            margin-right: 6px;
+        }
+
+        canvas {
+            width: 100%;
+            height: 400px;
+            border-bottom: 1px solid #e2e8f0;
+            border-left: 1px solid #e2e8f0;
+        }
+
+        .reaction-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .sub-text {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .unit-display {
+            margin-top: 8px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="reaction-header">
+        <h1>PFR Design: Reaction Kinetics</h1>
+        <div class="sub-text">Reaction: NO<sub>2</sub> + CO &rarr; NO + CO<sub>2</sub></div>
+    </div>
+
+    <div class="container">
+        <!-- Visualization Panel -->
+        <div class="card">
+            <canvas id="pfrCanvas"></canvas>
+            <!-- Updated Legend with Okabe-Ito Palette -->
+            <div class="legend">
+                <div class="legend-item"><div class="color-box" style="background: #d55e00;"></div>[NO<sub><sub>2</sub></sub>] (Reactant)</div>
+                <div class="legend-item"><div class="color-box" style="background: #0072b2;"></div>[CO] (Reactant)</div>
+                <div class="legend-item"><div class="color-box" style="background: #cc79a7;"></div>[NO] and [CO<sub><sub>2</sub></sub>] (Products)</div>
+            </div>
+        </div>
+
+        <!-- Controls Panel -->
+        <div class="card">
+            <h2>Rate Law Parameters</h2>
+            
+            <div class="formula-box" id="rateEqDisplay">
+                -r<sub>NO2</sub> = k [NO<sub>2</sub>]<sup>1.0</sup> [CO]<sup>1.0</sup>
+            </div>
+            <div id="unitDisplay" class="unit-display" style="text-align: center; margin-bottom: 20px;">
+                k = 0.5 (L/mol)/s
+            </div>
+
+            <div class="control-group">
+                <label>
+                    Order of [NO<sub>2</sub>]
+                    <span class="value-display" id="val-a">1.0</span>
+                </label>
+                <input type="range" id="input-a" min="0.5" max="3" step="0.1" value="1.0">
+            </div>
+
+            <div class="control-group">
+                <label>
+                    Order of [CO]
+                    <span class="value-display" id="val-b">1.0</span>
+                </label>
+                <input type="range" id="input-b" min="0.5" max="3" step="0.1" value="1.0">
+            </div>
+
+            <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-color);">
+                <h2>Simulation Details</h2>
+                <ul style="font-size: 0.9rem; color: var(--text-secondary); padding-left: 20px; margin: 0;">
+                    <li><strong>Reactor Type:</strong> Plug Flow (PFR)</li>
+                    <li><strong>Inlet [NO<sub>2</sub>]:</strong> 1.0 mol/L</li>
+                    <li><strong>Inlet [CO]:</strong> 2.0 mol/L</li>
+                    <li><strong>Flow Rate (v<sub>0</sub>):</strong> 5.0 L/s</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Constants & State ---
+        const k_val = 0.5;
+        const v0 = 5.0; // Volumetric flow rate
+        const C_NO2_0 = 1.0;
+        const C_CO_0 = 2.0;
+        const V_max = 50; // Max volume to simulate
+        const steps = 200; // Integration steps
+        const dV = V_max / steps;
+
+        // Colors (Okabe-Ito Accessible Palette)
+        const colors = {
+            NO2: '#d55e00', // Vermilion
+            CO: '#0072b2',  // Blue
+            NO: '#009e73',  // Bluish Green
+            CO2: '#cc79a7'  // Reddish Purple
+        };
+
+        // DOM Elements
+        const canvas = document.getElementById('pfrCanvas');
+        const ctx = canvas.getContext('2d');
+        const inputA = document.getElementById('input-a');
+        const inputB = document.getElementById('input-b');
+        const valA = document.getElementById('val-a');
+        const valB = document.getElementById('val-b');
+        const rateEqDisplay = document.getElementById('rateEqDisplay');
+        const unitDisplay = document.getElementById('unitDisplay');
+
+        // --- Simulation Logic (Euler Method) ---
+        function runSimulation(orderA, orderB) {
+            let data = {
+                V: [],
+                NO2: [],
+                CO: [],
+                NO: [],
+                CO2: []
+            };
+
+            // Initial conditions
+            let c_no2 = C_NO2_0;
+            let c_co = C_CO_0;
+            let c_no = 0.0;
+            let c_co2 = 0.0;
+            let vol = 0.0;
+
+            data.V.push(vol);
+            data.NO2.push(c_no2);
+            data.CO.push(c_co);
+            data.NO.push(c_no);
+            data.CO2.push(c_co2);
+
+            for (let i = 0; i < steps; i++) {
+                // Rate Law: r = k * [NO2]^a * [CO]^b
+                // Ensure concentrations don't go below 0 for calc (math stability)
+                let c_no2_safe = Math.max(0, c_no2);
+                let c_co_safe = Math.max(0, c_co);
+                
+                let rate = k_val * Math.pow(c_no2_safe, orderA) * Math.pow(c_co_safe, orderB);
+
+                // Design Equation: dFi/dV = ri
+                // d(C*v0)/dV = r => dC/dV = r/v0 (assuming constant density)
+                
+                // Stoichiometry: NO2 + CO -> NO + CO2
+                // r_NO2 = -rate
+                // r_CO = -rate
+                // r_NO = +rate
+                // r_CO2 = +rate
+
+                let dNO2 = -rate / v0;
+                let dCO = -rate / v0;
+                let dNO = rate / v0;
+                let dCO2 = rate / v0;
+
+                // Euler Step
+                c_no2 += dNO2 * dV;
+                c_co += dCO * dV;
+                c_no += dNO * dV;
+                c_co2 += dCO2 * dV;
+                vol += dV;
+
+                // Clamp to 0
+                if (c_no2 < 0) c_no2 = 0;
+                if (c_co < 0) c_co = 0;
+
+                data.V.push(vol);
+                data.NO2.push(c_no2);
+                data.CO.push(c_co);
+                data.NO.push(c_no);
+                data.CO2.push(c_co2);
+            }
+
+            return data;
+        }
+
+        // --- Rendering Logic ---
+        function drawGraph(data) {
+            // Setup Canvas resolution
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            
+            // Clear
+            ctx.clearRect(0, 0, rect.width, rect.height);
+
+            // Margins
+            const margin = { top: 20, right: 20, bottom: 40, left: 50 };
+            const width = rect.width - margin.left - margin.right;
+            const height = rect.height - margin.top - margin.bottom;
+
+            // Scaling Functions
+            const xScale = (v) => margin.left + (v / V_max) * width;
+            const yScale = (c) => margin.top + height - (c / 2.0) * height; // Max Conc is roughly 2.0, give some headroom (1.2)
+
+            // Grid & Axes
+            ctx.strokeStyle = "#e2e8f0";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            
+            // Horizontal grid
+            for(let i=0; i<=5; i++) {
+                let y = margin.top + (height * i / 5);
+                ctx.moveTo(margin.left, y);
+                ctx.lineTo(margin.left + width, y);
+            }
+            // Vertical grid
+            for(let i=0; i<=10; i++) {
+                let x = margin.left + (width * i / 10);
+                ctx.moveTo(x, margin.top);
+                ctx.lineTo(x, margin.top + height);
+            }
+            ctx.stroke();
+
+            // Axis Labels
+            ctx.fillStyle = "#64748b";
+            ctx.font = "12px sans-serif";
+            ctx.textAlign = "center";
+            
+            // X Axis Labels
+            for(let i=0; i<=5; i++) {
+                let val = (V_max * i / 5).toFixed(0);
+                let x = margin.left + (width * i / 5);
+                ctx.fillText(val, x, rect.height - 15);
+            }
+            ctx.fillText("Reactor Volume (L)", rect.width / 2 + 20, rect.height - 5);
+
+            // Y Axis Labels
+            ctx.textAlign = "right";
+            for(let i=0; i<=5; i++) {
+                let val = (2.0 * i / 5).toFixed(1);
+                let y = margin.top + height - (height * i / 5);
+                ctx.fillText(val, margin.left - 10, y + 4);
+            }
+            ctx.save();
+            ctx.translate(15, rect.height/2);
+            ctx.rotate(-Math.PI/2);
+            ctx.textAlign = "center";
+            ctx.fillText("Concentration (mol/L)", 0, 0);
+            ctx.restore();
+
+            // Draw Lines
+            const drawLine = (arr, color) => {
+                ctx.beginPath();
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 3;
+                ctx.moveTo(xScale(data.V[0]), yScale(arr[0]));
+                for(let i=1; i<arr.length; i++) {
+                    ctx.lineTo(xScale(data.V[i]), yScale(arr[i]));
+                }
+                ctx.stroke();
+            };
+
+            drawLine(data.NO2, colors.NO2);
+            drawLine(data.CO, colors.CO);
+            drawLine(data.NO, colors.NO);
+            drawLine(data.CO2, colors.CO2);
+        }
+
+        // --- Updates ---
+        function update() {
+            const a = parseFloat(inputA.value);
+            const b = parseFloat(inputB.value);
+
+            // Update Text
+            valA.textContent = a.toFixed(1);
+            valB.textContent = b.toFixed(1);
+
+            // Update Formula
+            rateEqDisplay.innerHTML = `-r<sub>NO2</sub> = k [NO<sub>2</sub>]<sup>${a}</sup> [CO]<sup>${b}</sup>`;
+
+            // Update Units
+            // Unit of k = (Conc)^(1-n) * Time^-1
+            // n = a + b
+            const n = a + b;
+            const exp = 1 - n;
+            let unitString = "";
+            
+            if (Math.abs(exp) < 0.01) {
+                // exp is roughly 0 (First order total)
+                unitString = "s⁻¹";
+            } else if (Math.abs(exp - 1) < 0.01) {
+                // exp is roughly 1 (Zero order)
+                unitString = "mol·L⁻¹·s⁻¹";
+            } else if (Math.abs(exp + 1) < 0.01) {
+                // exp is roughly -1 (Second order)
+                unitString = "L·mol⁻¹·s⁻¹";
+            } else {
+                // Generic
+                unitString = `(mol/L)<sup>${exp.toFixed(1)}</sup>·s⁻¹`;
+            }
+            
+            unitDisplay.innerHTML = `k = ${k_val} ${unitString}`;
+
+            // Calc & Draw
+            const simData = runSimulation(a, b);
+            drawGraph(simData);
+        }
+
+        // Events
+        inputA.addEventListener('input', update);
+        inputB.addEventListener('input', update);
+        window.addEventListener('resize', update);
+
+        // Init
+        update();
+
+    </script>
+</body>
+</html>

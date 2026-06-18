@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Water-Air Mixture Simulation</title>
+    <!-- Load Tailwind CSS --><script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for particles and smooth transitions */
+        .particle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            transition: all 0.5s ease-in-out;
+        }
+        .air-particle {
+            background-color: #3b82f6; /* blue-500 */
+            box-shadow: 0 0 5px rgba(59, 130, 246, 0.7);
+        }
+        .water-particle-vap {
+            background-color: #ef4444; /* red-500 */
+            box-shadow: 0 0 5px rgba(239, 68, 68, 0.7);
+        }
+        .water-particle-liq {
+            background-color: #ef4444; /* red-500 */
+            box-shadow: 0 0 5px rgba(239, 68, 68, 0.7);
+        }
+        /* Make the slider track and thumb more prominent */
+        input[type=range] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 10px;
+            background: #d1d5db; /* gray-300 */
+            border-radius: 5px;
+            outline: none;
+            opacity: 0.7;
+            -webkit-transition: .2s;
+            transition: opacity .2s;
+        }
+        input[type=range]:hover {
+            opacity: 1;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            background: #3b82f6; /* blue-500 */
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+        }
+        input[type=range]::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            background: #3b82f6; /* blue-500 */
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans p-6 md:p-12">
+
+    <div class="container mx-auto max-w-4xl bg-white shadow-2xl rounded-lg p-6 md:p-8">
+
+        <!-- Header --><div class="text-center mb-6">
+            <h1 class="text-3xl font-bold text-gray-800">Water-Air Mixture Simulation</h1>
+            <p class="text-lg text-gray-600 mt-2">Constant Pressure (1 atm) | 20 mol% H₂O, 80 mol% Air</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+            
+            <!-- Simulation Visual --><div class="w-full">
+                <!-- Vessel Container: Added relative positioning -->
+                <div class="w-3/4 mx-auto bg-gray-200 border-4 border-gray-700 rounded-t-lg relative" style="height: 450px;">
+                    <!-- Piston Head: Made absolute, w-full, removed relative -->
+                    <div id="piston-head" class="h-8 bg-gray-600 border-b-8 border-gray-800 z-10 transition-all duration-500 ease-out absolute w-full" style="top: 50px;">
+                        <div class="w-2 h-10 bg-gray-800 mx-auto -mt-4 rounded-t-sm"></div>
+                    </div>
+                    
+                    <!-- Cylinder Volume: Made absolute, pinned to bottom/left/right, removed height, set initial top -->
+                    <div id="cylinder-volume" class="bg-blue-50 overflow-hidden absolute bottom-0 left-0 right-0" style="top: 90px;">
+                        
+                        <!-- Gas Phase --><div id="gas-phase" class="absolute top-0 left-0 w-full h-full transition-all duration-500 ease-out">
+                            <!-- Gas particles will be injected here --></div>
+
+                        <!-- Liquid Phase --><div id="liquid-phase" class="absolute bottom-0 left-0 w-full bg-blue-400 opacity-70 transition-all duration-500 ease-out" style="height: 0px;">
+                            <!-- Liquid particles will be injected here --></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls and Data --><div class="w-full space-y-8">
+                
+                <!-- Data Readout --><div class="bg-gray-100 p-6 rounded-lg shadow-inner">
+                    <h2 class="text-xl font-semibold text-center mb-4">System State</h2>
+                    <div class="flex justify-around text-center">
+                        <div>
+                            <div class="text-sm font-medium text-gray-500">System State</div>
+                            <div id="state-display" class="text-2xl font-bold text-blue-600">...</div>
+                        </div>
+                        <div>
+                            <div class="text-sm font-medium text-gray-500">Vapor H₂O</div>
+                            <div id="vapor-comp" class="text-2xl font-bold text-red-600">...%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Temperature Slider --><div>
+                    <div class="flex justify-between items-center mb-2">
+                        <label for="temp-slider" class="text-lg font-medium text-gray-700">Temperature</label>
+                        <div id="temp-label" class="text-2xl font-bold text-gray-900 font-mono">10.0 °C</div>
+                    </div>
+                    
+                    <input id="temp-slider" type="range" min="10" max="110" value="10" step="0.1" class="w-full">
+                    
+                    <!-- Slider Markers --><div class="w-full relative h-6 mt-2">
+                        <div class="absolute text-center" style="left: 0%;">
+                            <div class="h-2 w-0.5 bg-gray-500 mx-auto"></div>
+                            <div class="text-xs text-gray-600">10°C</div>
+                        </div>
+                        
+                        <!-- Dew Point Marker --><!-- T_dew = 60.4°C. Range is 10-110 (100 units). (60.4 - 10) / 100 * 100 = 50.4% --><div class="absolute text-center" style="left: 37.2%;">
+                            <div class="h-4 w-1 bg-red-500 mx-auto"></div>
+                            <div class="text-xs font-bold text-red-600">Dew Point (60.4°C)</div>
+                        </div>
+
+                        <!-- 100C Marker -->
+                        <div class="absolute text-center" style="left: 83.5%;">
+                            <div class="h-2 w-0.5 bg-gray-500 mx-auto"></div>
+                            <div class="text-xs text-gray-600">100°C</div>
+                        </div>
+
+                        <div class="absolute text-center" style="left: 93%;">
+                            <div class="h-2 w-0.5 bg-gray-500 mx-auto"></div>
+                            <div class="text-xs text-gray-600">110°C</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Explanation --><div class="text-sm text-gray-600 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                    <p><strong>Above the Dew Point (60.4°C):</strong> All water is in the gas phase (superheated). The vapor composition is fixed at 20% H₂O.</p>
+                    <p class="mt-2"><strong>Below the Dew Point:</strong> Liquid water forms. The vapor phase is "saturated" – its H₂O content is the maximum possible at that temperature. As you cool, more water condenses from the vapor.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const tempSlider = document.getElementById('temp-slider');
+        const tempLabel = document.getElementById('temp-label');
+        const pistonHead = document.getElementById('piston-head');
+        const cylinderVolume = document.getElementById('cylinder-volume');
+        const gasPhase = document.getElementById('gas-phase');
+        const liquidPhase = document.getElementById('liquid-phase');
+        const vaporCompLabel = document.getElementById('vapor-comp');
+        const stateDisplayLabel = document.getElementById('state-display');
+
+        // --- Constants ---
+        const P_TOTAL_ATM = 1.0;
+        const Z_WATER = 0.20; // Overall mol fraction of water
+        const Z_AIR = 0.80;   // Overall mol fraction of air
+        
+        // Calculated Dew Point for P_water = 0.20 atm
+        const T_DEW_C = 60.36; 
+
+        // Total number of particles for visualization (DOUBLED)
+        const N_PARTICLES_AIR = 40; // Represents 80% (20 * 2)
+        const N_PARTICLES_WATER = 10;  // Represents 20% (5 * 2)
+        const N_PARTICLES_TOTAL = N_PARTICLES_AIR + N_PARTICLES_WATER;
+        
+        // NEW: Constants for visual layout
+        const VESSEL_HEIGHT_PX = 450; // From parent div style="height: 450px;"
+        const PISTON_HEIGHT_PX = 40; // h-8 (32px) + border-b-8 (8px)
+        const MAX_VISUAL_VOLUME_HEIGHT = VESSEL_HEIGHT_PX - PISTON_HEIGHT_PX; // 410px
+
+        // --- Physics Functions ---
+
+        /**
+         * Calculates saturation pressure of water (in atm) at a given temp (in C).
+         * Uses a simplified Antoine equation valid from 10-110°C.
+         * log10(P_kPa) = 7.07406 - 1657.46 / (227.02 + T_C)
+         */
+        function getPSatAtm(tempC) {
+            // Ensure tempC is within the Antoine equation's valid range for accuracy
+            // For temperatures outside, we can extrapolate or use boundary values
+            if (tempC < 10) tempC = 10;
+            if (tempC > 110) tempC = 110;
+
+            const p_kPa = Math.pow(10, 7.07406 - 1657.46 / (227.02 + tempC));
+            return p_kPa / 101.325;
+        }
+
+        // --- Main Simulation Update Function ---
+        function updateSimulation() {
+            const T_C = parseFloat(tempSlider.value);
+            const T_K = T_C + 273.15;
+            tempLabel.innerText = `${T_C.toFixed(1)} °C`;
+
+            let y_water_vap = 0.0;
+            let n_water_liq_frac = 0.0; // Fraction of *total water* that is liquid (0 to 1)
+            let n_total_gas = 0.0; // Total moles of gas in vapor phase
+            let state = "";
+
+            const p_sat_atm = getPSatAtm(T_C);
+
+            if (T_C >= T_DEW_C) { // Use >= for dew point
+                // --- Region 1: Superheated Vapor ---
+                state = "Superheated";
+                y_water_vap = Z_WATER;
+                n_water_liq_frac = 0.0;
+                n_total_gas = Z_WATER + Z_AIR; // All 1.0 "moles" are gas
+            
+            } else {
+                // --- Region 2: Saturated Vapor + Liquid ---
+                state = "Saturated";
+                // Vapor mole frac = P_sat / P_total
+                y_water_vap = p_sat_atm / P_TOTAL_ATM;
+                
+                // Calculate amount of water in vapor
+                // n_air_vap is constant at Z_AIR (0.80)
+                // P_air = P_total - P_water_vap = P_total - (y_water_vap * P_total)
+                // n_water_vap / n_air = P_water_vap / P_air
+                // n_water_vap = n_air * (P_water_vap / P_air)
+                // n_water_vap = Z_AIR * (y_water_vap * P_TOTAL_ATM) / ((1 - y_water_vap) * P_TOTAL_ATM)
+                // n_water_vap = Z_AIR * y_water_vap / (1 - y_water_vap)
+                const n_water_vap = Z_AIR * y_water_vap / (1 - y_water_vap);
+                
+                const n_water_liq = Z_WATER - n_water_vap;
+
+                if (n_water_liq <= 0) {
+                    // Should be superheated, adjust state and values
+                    state = "Superheated";
+                    y_water_vap = Z_WATER;
+                    n_water_liq_frac = 0.0;
+                    n_total_gas = Z_WATER + Z_AIR;
+                } else {
+                    n_water_liq_frac = n_water_liq / Z_WATER;
+                    n_total_gas = Z_AIR + n_water_vap;
+                }
+            }
+            
+            // --- Update Data Readouts ---
+            vaporCompLabel.innerText = `${(y_water_vap * 100).toFixed(1)}%`;
+            stateDisplayLabel.innerText = state;
+
+            // --- Update Visuals ---
+            
+            // 1. Update Piston Position
+            // V = nRT/P. P is constant, R is constant. V is proportional to n_total_gas * T_K
+            // We scale this to the max possible volume (at 110°C, superheated)
+            const n_gas_max = Z_WATER + Z_AIR; // 1.0
+            const T_K_max = 110 + 273.15;
+            const V_max = n_gas_max * T_K_max; // Proportional max volume
+            
+            const V_current = n_total_gas * T_K;
+            const v_frac = V_current / V_max;
+            
+            // NEW VISUALS LOGIC
+            // cylinderHeight is the height of the gas volume
+            const cylinderHeight = v_frac * MAX_VISUAL_VOLUME_HEIGHT;
+            
+            // pistonTop is calculated from the top, based on the cylinder height
+            const pistonTop = VESSEL_HEIGHT_PX - cylinderHeight - PISTON_HEIGHT_PX;
+            
+            pistonHead.style.top = `${pistonTop}px`;
+            
+            // cylinderVolume's top is the bottom of the piston
+            // Since cylinderVolume is absolute with bottom:0, setting its top defines its height from the floor.
+            cylinderVolume.style.top = `${pistonTop + PISTON_HEIGHT_PX}px`;
+
+            // 2. Update Liquid Level
+            // Liquid volume is proportional to n_water_liq_frac
+            // Scale liquid height to new max visual height
+            const maxLiqHeight = MAX_VISUAL_VOLUME_HEIGHT * 0.20;
+            const liquidHeight = n_water_liq_frac * maxLiqHeight;
+            liquidPhase.style.height = `${liquidHeight}px`;
+
+            // 3. Update Particles
+            // gasH is the total height of the cylinderVolume (cylinderHeight)
+            // liqH is the height of the liquid part (liquidHeight)
+            renderParticles(n_water_liq_frac, cylinderHeight, liquidHeight);
+        }
+
+        function renderParticles(liqFrac, gasH, liqH) {
+            // Clear old particles
+            gasPhase.innerHTML = '';
+            liquidPhase.innerHTML = '';
+
+            // Calculate number of water particles in each phase
+            const n_water_liq = Math.round(N_PARTICLES_WATER * liqFrac);
+            const n_water_vap = N_PARTICLES_WATER - n_water_liq;
+
+            // Add air particles (always in gas)
+            for (let i = 0; i < N_PARTICLES_AIR; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle air-particle';
+                // Position randomly within the gas phase volume
+                // gasH is total height of cylinder, liqH is liquid height. Gas is in (gasH - liqH) space.
+                p.style.top = `${Math.random() * (gasH - liqH - 10)}px`; // -10 to keep from edge
+                p.style.left = `${Math.random() * 95}%`; // % for responsiveness
+                gasPhase.appendChild(p);
+            }
+
+            // Add water vapor particles
+            for (let i = 0; i < n_water_vap; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle water-particle-vap';
+                p.style.top = `${Math.random() * (gasH - liqH - 10)}px`;
+                p.style.left = `${Math.random() * 95}%`;
+                gasPhase.appendChild(p);
+            }
+
+            // Add liquid water particles
+            for (let i = 0; i < n_water_liq; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle water-particle-liq';
+                // Position randomly within the liquid phase volume
+                // liqH is total height of liquid, -10 for buffer
+                p.style.top = `${Math.random() * (liqH - 10)}px`; // -10 to keep from edge
+                p.style.left = `${Math.random() * 95}%`;
+                liquidPhase.appendChild(p);
+            }
+        }
+
+        // --- Initialization ---
+        tempSlider.addEventListener('input', updateSimulation);
+        window.addEventListener('load', updateSimulation); // Run on page load
+
+    </script>
+</body>
+</html>

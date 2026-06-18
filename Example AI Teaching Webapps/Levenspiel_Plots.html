@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Levenspiel Plot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        canvas {
+            touch-action: none; /* Prevent scrolling while dragging on canvas */
+        }
+        /* Custom range slider styling */
+        input[type=range] {
+            -webkit-appearance: none; 
+            background: transparent; 
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #3b82f6;
+            margin-top: -8px; 
+            cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #cbd5e1;
+            border-radius: 2px;
+        }
+        input[type=range]:focus {
+            outline: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen p-2 md:p-6">
+
+    <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Header -->
+        <div class="lg:col-span-3">
+            <h1 class="text-2xl md:text-3xl font-bold text-slate-900">Reactor Sizing: Levenspiel Plot</h1>
+            <p class="text-sm md:text-base text-slate-600 mt-1">
+                Toggle between kinetics, pick a conversion point ($X$), and read the axes to calculate volume ($V$).
+            </p>
+        </div>
+
+        <!-- Main Visualization (Canvas) -->
+        <!-- Added max-height constraints to fit screen better -->
+        <div class="lg:col-span-2 bg-white rounded-xl shadow-lg border border-slate-200 p-2 md:p-4 flex flex-col relative">
+            
+            <!-- Legend overlay -->
+            <div class="absolute top-4 left-4 bg-white/90 p-2 rounded-lg border border-slate-100 shadow-sm text-xs font-medium z-10 hidden sm:block">
+                <div class="flex items-center gap-2 mb-1">
+                    <div class="w-3 h-3 bg-blue-500 opacity-40 border border-blue-600"></div>
+                    <span>PFR (Integral)</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 bg-red-500 opacity-40 border border-red-600"></div>
+                    <span>CSTR (Rectangle)</span>
+                </div>
+            </div>
+
+            <!-- Canvas container with responsive height -->
+            <div class="relative w-full h-[50vh] min-h-[300px] max-h-[500px]">
+                <canvas id="plotCanvas" class="w-full h-full cursor-crosshair block"></canvas>
+            </div>
+            
+            <div class="mt-2 text-center text-slate-400 text-xs italic">
+                Drag on the chart to set conversion ($X$)
+            </div>
+        </div>
+
+        <!-- Controls & Results -->
+        <div class="lg:col-span-1 flex flex-col gap-4">
+            
+            <!-- Scenario Selector -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-3">1. Select Kinetics</h3>
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="btnScenario1" onclick="setScenario(1)" class="p-2 rounded border border-blue-500 bg-blue-50 text-left transition-all hover:bg-blue-100">
+                        <span class="block font-bold text-blue-900 text-sm">Normal Decay</span>
+                        <span class="block text-[10px] text-blue-700 leading-tight mt-1">Rate drops as X increases (n<sup>th</sup> order)</span>
+                    </button>
+                    <button id="btnScenario2" onclick="setScenario(2)" class="p-2 rounded border border-transparent bg-slate-100 text-left hover:bg-slate-200 transition-all">
+                        <span class="block font-bold text-slate-900 text-sm">Autocatalytic</span>
+                        <span class="block text-[10px] text-slate-600 leading-tight mt-1">Rate peaks at mid X (curve dips)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Slider Control -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-3">2. Set Conversion ($X$)</h3>
+                <div class="flex items-center gap-4">
+                    <input type="range" id="conversionSlider" min="0" max="0.95" step="0.01" value="0.5" class="flex-grow">
+                    <div class="flex flex-col items-end">
+                        <span class="text-xs text-slate-400">Current X</span>
+                        <span id="conversionValue" class="font-mono font-bold text-xl text-slate-800">0.50</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Calculation Display -->
+            <div class="bg-slate-800 text-white rounded-xl shadow-lg p-5 flex-grow flex flex-col justify-center">
+                <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wide mb-4 border-b border-slate-700 pb-2">3. Volume Results</h3>
+                
+                <div class="space-y-4">
+                    <!-- CSTR Row -->
+                    <div class="flex justify-between items-end">
+                        <div>
+                            <div class="text-red-300 font-bold">V<sub>CSTR</sub></div>
+                            <div class="text-[10px] text-slate-400">Area = X*F<sub>A0</sub>/-r<sub>A</sub></div>
+                        </div>
+                        <div id="volCSTR" class="text-2xl font-mono text-red-300">0.00</div>
+                    </div>
+
+                    <!-- PFR Row -->
+                    <div class="flex justify-between items-end">
+                        <div>
+                            <div class="text-blue-300 font-bold">V<sub>PFR</sub></div>
+                            <div class="text-[10px] text-slate-400">Area = &int;<sub>0</sub><sup>X</sup> (F<sub>A0</sub>/-r<sub>A</sub>)dX</div>
+                        </div>
+                        <div id="volPFR" class="text-2xl font-mono text-blue-300">0.00</div>
+                    </div>
+
+                    <!-- Ratio -->
+                    <div class="pt-3 border-t border-slate-700 mt-2 flex justify-between items-center">
+                        <span class="text-xs text-slate-400">Ratio (CSTR/PFR):</span>
+                        <span id="volRatio" class="font-bold font-mono text-white">1.0</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('plotCanvas');
+        const ctx = canvas.getContext('2d');
+        const slider = document.getElementById('conversionSlider');
+        const conversionDisplay = document.getElementById('conversionValue');
+        const volPFRDisplay = document.getElementById('volPFR');
+        const volCSTRDisplay = document.getElementById('volCSTR');
+        const ratioDisplay = document.getElementById('volRatio');
+        
+        // Scenario State
+        let currentScenario = 1;
+        
+        // Config
+        // Increased left margin for Y-axis labels
+        const padding = { top: 30, right: 30, bottom: 40, left: 50 }; 
+        let width, height;
+        // Fixed Y-axis max for consistency
+        const Y_AXIS_MAX = 200; 
+
+        // Resize Logic
+        const resizeObserver = new ResizeObserver(entries => {
+            const container = entries[0].contentRect;
+            // Get pixel ratio for sharp text on retina screens
+            const dpr = window.devicePixelRatio || 1;
+            
+            canvas.width = container.width * dpr;
+            canvas.height = container.height * dpr;
+            
+            // Set display size (css pixels)
+            canvas.style.width = `${container.width}px`;
+            canvas.style.height = `${container.height}px`;
+            
+            // Store logic dimensions
+            width = canvas.width / dpr;
+            height = canvas.height / dpr;
+            
+            // Scale context
+            ctx.resetTransform();
+            ctx.scale(dpr, dpr);
+            
+            draw();
+        });
+        resizeObserver.observe(canvas.parentElement);
+
+        // Mathematical Functions (1/-rA)
+        function getFaRa(x) {
+            if (currentScenario === 1) {
+                // Scenario 1: Standard Decay (1st Order equivalent behavior)
+                // y = 20 / (1.05 - x)
+                // x=0 -> y=19, x=0.9 -> y=133
+                return 20 / (1.05 - x); 
+            } else {
+                // Scenario 2: Autocatalytic
+                // Parabola: y = 150(x - 0.3)^2 + 15
+                // Vertex (min rate) at x=0.3
+                return 150 * Math.pow(x - 0.3, 2) + 15;
+            }
+        }
+
+        function setScenario(id) {
+            currentScenario = id;
+            const btn1 = document.getElementById('btnScenario1');
+            const btn2 = document.getElementById('btnScenario2');
+            const activeClass = "border-blue-500 bg-blue-50 ring-1 ring-blue-500";
+            const inactiveClass = "border-transparent bg-slate-100";
+            
+            // Reset classes
+            btn1.className = `p-2 rounded border text-left transition-all ${id === 1 ? activeClass : inactiveClass}`;
+            btn2.className = `p-2 rounded border text-left transition-all ${id === 2 ? activeClass : inactiveClass}`;
+            
+            // Text colors
+            btn1.querySelector('span').className = `block font-bold text-sm ${id === 1 ? 'text-blue-900' : 'text-slate-900'}`;
+            btn2.querySelector('span').className = `block font-bold text-sm ${id === 2 ? 'text-blue-900' : 'text-slate-900'}`;
+
+            draw();
+        }
+
+        function calculateVolumes(targetX) {
+            let pfrArea = 0;
+            const step = 0.005; // Integration step size
+            
+            // Numerical Integration (Trapezoidal)
+            for(let x = 0; x < targetX; x += step) {
+                let y1 = getFaRa(x);
+                let y2 = getFaRa(Math.min(x + step, targetX));
+                pfrArea += ((y1 + y2) / 2) * step;
+            }
+
+            const yAtX = getFaRa(targetX);
+            const cstrArea = yAtX * targetX;
+
+            return { pfr: pfrArea, cstr: cstrArea };
+        }
+
+        // Coordinate Mapping
+        function mapX(val) {
+            return padding.left + val * (width - padding.left - padding.right);
+        }
+
+        function mapY(val) {
+            return height - padding.bottom - (val / Y_AXIS_MAX) * (height - padding.top - padding.bottom);
+        }
+
+        // Inverse mapping for interaction
+        function inverseMapX(pixelX) {
+            const plotWidth = width - padding.left - padding.right;
+            let val = (pixelX - padding.left) / plotWidth;
+            return Math.max(0, Math.min(0.95, val));
+        }
+
+        function drawAxes() {
+            ctx.beginPath();
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 1;
+
+            // Y-Axis Line
+            ctx.moveTo(padding.left, padding.top);
+            ctx.lineTo(padding.left, height - padding.bottom);
+            
+            // X-Axis Line
+            ctx.lineTo(width - padding.right, height - padding.bottom);
+            ctx.stroke();
+
+            ctx.fillStyle = '#64748b';
+            ctx.font = '12px Inter';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            // X-Axis Ticks & Labels (0 to 1.0)
+            for(let i = 0; i <= 10; i++) {
+                const val = i / 10;
+                const xPos = mapX(val);
+                const yPos = height - padding.bottom;
+                
+                // Tick mark
+                ctx.beginPath();
+                ctx.moveTo(xPos, yPos);
+                ctx.lineTo(xPos, yPos + 6);
+                ctx.stroke();
+
+                // Number
+                ctx.fillText(val.toFixed(1), xPos, yPos + 16);
+            }
+            // X Label
+            ctx.fillStyle = '#334155';
+            ctx.font = 'bold 12px Inter';
+            ctx.fillText('Conversion (X)', padding.left + (width - padding.left - padding.right) / 2, height - 5);
+
+
+            // Y-Axis Ticks & Labels (0 to 200)
+            ctx.fillStyle = '#64748b';
+            ctx.font = '12px Inter';
+            ctx.textAlign = 'right';
+            
+            const yStep = 25;
+            for(let val = 0; val <= Y_AXIS_MAX; val += yStep) {
+                const yPos = mapY(val);
+                const xPos = padding.left;
+
+                // Tick mark
+                ctx.beginPath();
+                ctx.moveTo(xPos, yPos);
+                ctx.lineTo(xPos - 6, yPos);
+                ctx.stroke();
+
+                // Number
+                ctx.fillText(val, xPos - 10, yPos);
+            }
+
+            // Y Label (Rotated)
+            ctx.save();
+            ctx.translate(15, height / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillStyle = '#334155';
+            ctx.font = 'bold 12px Inter';
+            ctx.textAlign = 'center';
+            ctx.fillText('Fa0 / -rA', 0, 0);
+            ctx.restore();
+        }
+
+        function draw() {
+            if (!width) return;
+
+            const targetX = parseFloat(slider.value);
+            conversionDisplay.innerText = targetX.toFixed(2);
+
+            // Clear
+            ctx.clearRect(0, 0, width, height);
+
+            // 1. Draw Axes & Grid
+            drawAxes();
+
+            // Calculate Curve Points
+            const points = [];
+            for (let x = 0; x <= 0.95; x += 0.01) {
+                points.push({ x: x, y: getFaRa(x) });
+            }
+
+            const currentY = getFaRa(targetX);
+            const xPixel = mapX(targetX);
+            const yPixel = mapY(currentY);
+            const yZero = mapY(0);
+            const xZero = mapX(0);
+
+            // 2. Draw CSTR Area (Rectangle)
+            ctx.fillStyle = 'rgba(239, 68, 68, 0.2)'; // Red transparent
+            ctx.fillRect(xZero, yPixel, xPixel - xZero, yZero - yPixel);
+            
+            // CSTR Outline
+            ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 4]);
+            ctx.strokeRect(xZero, yPixel, xPixel - xZero, yZero - yPixel);
+            ctx.setLineDash([]);
+
+
+            // 3. Draw PFR Area (Under Curve)
+            ctx.beginPath();
+            ctx.moveTo(mapX(0), mapY(getFaRa(0)));
+            for(let p of points) {
+                if(p.x <= targetX) {
+                    ctx.lineTo(mapX(p.x), mapY(p.y));
+                }
+            }
+            // Ensure we hit the exact curve point at targetX before dropping down
+            ctx.lineTo(mapX(targetX), mapY(getFaRa(targetX)));
+            ctx.lineTo(mapX(targetX), mapY(0));
+            ctx.lineTo(mapX(0), mapY(0));
+            ctx.closePath();
+            ctx.fillStyle = 'rgba(59, 130, 246, 0.3)'; // Blue transparent
+            ctx.fill();
+
+            // 4. Draw The Kinetic Curve
+            ctx.beginPath();
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.moveTo(mapX(points[0].x), mapY(points[0].y));
+            for (let p of points) {
+                ctx.lineTo(mapX(p.x), mapY(p.y));
+            }
+            ctx.stroke();
+
+            // 5. Highlight Current Point
+            ctx.beginPath();
+            ctx.fillStyle = '#0f172a';
+            ctx.arc(xPixel, yPixel, 6, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw lines to axes for reading values
+            ctx.beginPath();
+            ctx.strokeStyle = '#64748b';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([2, 2]);
+            // Line to Y axis
+            ctx.moveTo(xPixel, yPixel);
+            ctx.lineTo(padding.left, yPixel);
+            // Line to X axis
+            ctx.moveTo(xPixel, yPixel);
+            ctx.lineTo(xPixel, height - padding.bottom);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Display current Y value on axis
+            ctx.fillStyle = '#0f172a';
+            ctx.font = 'bold 12px monospace';
+            ctx.textAlign = 'right';
+            ctx.fillText(currentY.toFixed(1), padding.left - 10, yPixel + 4);
+
+
+            // Update Result Numbers
+            const vols = calculateVolumes(targetX);
+            volPFRDisplay.innerText = vols.pfr.toFixed(2);
+            volCSTRDisplay.innerText = vols.cstr.toFixed(2);
+            
+            const ratio = targetX > 0 ? (vols.cstr / vols.pfr).toFixed(2) : "0.00";
+            ratioDisplay.innerText = ratio;
+        }
+
+        // Interactivity
+        slider.addEventListener('input', draw);
+        
+        // Canvas Interactions
+        let isDragging = false;
+
+        function updateFromEvent(e) {
+            e.preventDefault(); // Stop page scrolling
+            const rect = canvas.getBoundingClientRect();
+            
+            // Get client coordinates (touch or mouse)
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const xRel = clientX - rect.left;
+            
+            // Use width stored in resizeObserver (logical pixels)
+            // But we need to account for the fact that xRel is in CSS pixels
+            // The map functions work on the logical width.
+            
+            // Let's rely on ratio: xRel / rect.width
+            const ratio = (xRel - (padding.left * (rect.width/width))) / (rect.width - (padding.left + padding.right)*(rect.width/width));
+            
+            // Actually, simpler approach:
+            // inverseMapX expects logical pixels.
+            // logicalX = xRel * (width / rect.width)
+            const dpr = width / rect.width; // Should be equivalent to devicePixelRatio logic
+            
+            const val = inverseMapX(xRel * dpr);
+            
+            slider.value = val;
+            draw();
+        }
+
+        canvas.addEventListener('mousedown', (e) => { isDragging = true; updateFromEvent(e); });
+        canvas.addEventListener('mousemove', (e) => { if(isDragging) updateFromEvent(e); });
+        canvas.addEventListener('mouseup', () => { isDragging = false; });
+        canvas.addEventListener('mouseleave', () => { isDragging = false; });
+
+        canvas.addEventListener('touchstart', (e) => { isDragging = true; updateFromEvent(e); }, {passive: false});
+        canvas.addEventListener('touchmove', (e) => { if(isDragging) updateFromEvent(e); }, {passive: false});
+        canvas.addEventListener('touchend', () => { isDragging = false; });
+
+        // Force initial draw
+        setScenario(1);
+
+    </script>
+</body>
+</html>

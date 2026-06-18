@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Manometer Activity</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom range slider styling */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            margin-top: -8px;
+            box-shadow: 0 0 2px rgba(0,0,0,0.5);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #cbd5e1;
+            border-radius: 2px;
+        }
+        .mercury-gradient {
+            fill: url(#mercuryGrad);
+        }
+        .glass-effect {
+            fill: rgba(255, 255, 255, 0.2);
+            stroke: rgba(255, 255, 255, 0.5);
+            stroke-width: 1px;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans min-h-screen flex flex-col items-center p-4">
+
+    <header class="w-full max-w-5xl mb-6 text-center">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">Manometer Physics</h1>
+        <p class="text-gray-600">Compare a standard U-Tube Manometer vs. an Inclined Manometer. <br>Assume atmospheric pressure (P<sub>atm</sub>) is 760 mmHg.</p>
+    </header>
+
+    <div class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+        <!-- U-TUBE MANOMETER SECTION -->
+        <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+            <h2 class="text-xl font-bold mb-4 text-blue-800 border-b pb-2">1. U-Tube Manometer</h2>
+            
+            <div class="relative h-[350px] w-full flex justify-center bg-gray-100 rounded-lg overflow-hidden border border-gray-300">
+                <!-- Physics Info Overlay -->
+                <div class="absolute top-2 left-2 text-xs bg-white/80 p-2 rounded shadow backdrop-blur-sm z-10">
+                    <p class="font-mono">P<sub>atm</sub> = 760 mmHg</p>
+                    <p class="font-mono text-blue-600" id="info-u-delta">Δh = 0 mm</p>
+                </div>
+
+                <svg id="svg-u-tube" width="300" height="340" viewBox="0 0 300 340" class="mt-4">
+                    <defs>
+                        <linearGradient id="mercuryGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" style="stop-color:#9ca3af;stop-opacity:1" />
+                            <stop offset="50%" style="stop-color:#d1d5db;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#6b7280;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+
+                    <!-- Tank -->
+                    <g transform="translate(20, 50)">
+                        <circle cx="40" cy="40" r="40" fill="#e2e8f0" stroke="#64748b" stroke-width="2"/>
+                        <text x="40" y="45" text-anchor="middle" font-size="12" fill="#475569">GAS</text>
+                        <!-- Connector -->
+                        <rect x="78" y="30" width="20" height="20" fill="#e2e8f0" stroke="#64748b" stroke-width="0" />
+                        <line x1="78" y1="30" x2="90" y2="30" stroke="#64748b" stroke-width="2" />
+                        <line x1="78" y1="50" x2="90" y2="50" stroke="#64748b" stroke-width="2" />
+                    </g>
+
+                    <!-- U-Tube Structure -->
+                    <!-- Center X is roughly 150 -->
+                    <!-- Left leg center: 120, Right leg center: 180 (width 60) -->
+                    <path d="M 110 40 L 110 250 A 30 30 0 0 0 170 250 L 170 20" 
+                          fill="none" stroke="#94a3b8" stroke-width="22" stroke-linecap="round"/>
+                    
+                    <!-- Mercury Fluid -->
+                    <!-- Base level at 200. Max pressure sends right up, left down. -->
+                    <path id="u-fluid" d="M 110 200 L 110 250 A 30 30 0 0 0 170 250 L 170 200" 
+                          fill="none" stroke="url(#mercuryGrad)" stroke-width="18" stroke-linecap="butt"/>
+
+                    <!-- Tube Inner Highlight (Glass effect) -->
+                    <path d="M 110 40 L 110 250 A 30 30 0 0 0 170 250 L 170 20" 
+                          fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="4" transform="translate(-5,0)"/>
+
+                    <!-- Open End Label -->
+                    <text x="170" y="15" text-anchor="middle" font-size="10" fill="#64748b">Open</text>
+                    <path d="M 170 20 L 170 10" stroke="#64748b" stroke-width="1" marker-end="url(#arrow)" />
+
+                    <!-- Ruler / Scale -->
+                    <g id="u-ruler" transform="translate(195, 200)">
+                        <!-- Zero Line -->
+                        <!-- line x1="-35" y1="0" x2="20" y2="0" stroke="#ef4444" stroke-width="1" stroke-dasharray="2,2"/>
+                        <text x="25" y="4" font-size="10" fill="#ef4444">0</text>
+                        
+                        <!-- Ticks generated by JS -->
+                    </g>
+                    
+                    <!-- Measurement Lines -->
+                    <line id="u-level-left" x1="100" y1="200" x2="150" y2="200" stroke="#ef4444" stroke-width="1" stroke-opacity="0.5" />
+                    <line id="u-level-right" x1="130" y1="200" x2="200" y2="200" stroke="#ef4444" stroke-width="1" stroke-opacity="0.5" />
+                </svg>
+            </div>
+
+            <div class="mt-6">
+                <div class="flex justify-between items-center mb-2">
+                    <label for="u-pressure" class="font-semibold text-gray-700">Tank Pressure (P<sub>gas</sub>)</label>
+                    <span class="bg-blue-100 text-blue-800 py-1 px-3 rounded font-mono font-bold" id="u-val">760 mmHg</span>
+                </div>
+                <input type="range" id="u-pressure" min="760" max="800" value="760" step="1">
+                <div class="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>760 mmHg (Atm)</span>
+                    <span>800 mmHg</span>
+                </div>
+                <p class="mt-4 text-sm text-gray-600 bg-gray-50 p-3 rounded border">
+                    <strong>Physics:</strong> In a U-tube, the fluid moves down on the high-pressure side and up on the low-pressure side. The total height difference (<i>h</i>) equals the pressure difference in mmHg.
+                    <br><code class="text-xs">h = P_gas - P_atm</code>
+                </p>
+            </div>
+        </div>
+
+        <!-- INCLINED MANOMETER SECTION -->
+        <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+            <h2 class="text-xl font-bold mb-4 text-purple-800 border-b pb-2">2. Inclined Manometer</h2>
+            
+            <div class="relative h-[350px] w-full flex justify-center bg-gray-100 rounded-lg overflow-hidden border border-gray-300">
+                <div class="absolute top-2 left-2 text-xs bg-white/80 p-2 rounded shadow backdrop-blur-sm z-10">
+                    <p class="font-mono">Angle (&theta;) = 30°</p>
+                    <p class="font-mono text-purple-600" id="info-inc-delta">Length (L) = 0 mm</p>
+                </div>
+
+                <svg id="svg-inclined" width="380" height="340" viewBox="0 0 380 340" class="mt-4">
+                    
+                    <!-- Tank (Reservoir) -->
+                    <g transform="translate(30, 180)">
+                        <rect x="0" y="0" width="60" height="80" rx="4" fill="#e2e8f0" stroke="#64748b" stroke-width="2"/>
+                        <text x="30" y="45" text-anchor="middle" font-size="12" fill="#475569">GAS</text>
+                        <!-- Connector to tube -->
+                        <rect x="58" y="60" width="20" height="15" fill="#9ca3af" /> 
+                    </g>
+
+                    <!-- Inclined Tube Structure -->
+                    <!-- Start at (100, 255) approx. Angle 30 deg up. -->
+                    <!-- slope m = tan(30) ~ 0.577. Or simple trig: dy/dx = 0.5/0.866 -->
+                    <!-- Let's fix start point at 90, 250. -->
+                    <!-- Length 300px along incline. -->
+                    <!-- End point: x = 90 + 300*cos(30), y = 250 - 300*sin(30) -->
+                    <!-- cos(30) = 0.866, sin(30) = 0.5 -->
+                    <!-- x_end = 90 + 260 = 350. y_end = 250 - 150 = 100. -->
+                    
+                    <!-- Tube Outline -->
+                    <line x1="90" y1="250" x2="360" y2="94" stroke="#94a3b8" stroke-width="14" stroke-linecap="round" />
+                    
+                    <!-- Mercury Reservoir (in tank) -->
+                    <!-- Simplified: Assuming "Well Type" where area of tank >> area of tube, so tank level drop is negligible visually -->
+                    <rect x="35" y="240" width="50" height="15" fill="url(#mercuryGrad)" />
+
+                    <!-- Mercury in Tube (The movable part) -->
+                    <!-- Start at 90, 250. End is dynamic. -->
+                    <line id="inc-fluid" x1="90" y1="250" x2="90" y2="250" stroke="url(#mercuryGrad)" stroke-width="10" stroke-linecap="butt" />
+
+                    <!-- Glass Highlight -->
+                    <line x1="90" y1="250" x2="360" y2="94" stroke="rgba(255,255,255,0.4)" stroke-width="4" transform="translate(0, -3)" />
+
+                    <!-- Open End -->
+                    <text x="360" y="85" text-anchor="middle" font-size="10" fill="#64748b">Open</text>
+
+                    <!-- Ruler / Scale along the incline -->
+                    <g id="inc-ruler">
+                        <!-- Ticks generated by JS -->
+                    </g>
+                    
+                    <!-- Reference Line (Horizontal) -->
+                    <line x1="80" y1="250" x2="370" y2="250" stroke="#000" stroke-width="1" stroke-dasharray="4,4" stroke-opacity="0.2"/>
+                    <text x="340" y="265" font-size="10" fill="#666" font-style="italic">Horizontal Ref</text>
+                    
+                    <!-- Angle Arc -->
+                    <path d="M 140 250 A 50 50 0 0 0 135 224" fill="none" stroke="#666" stroke-width="1" stroke-dasharray="2,2"/>
+                    <text x="150" y="240" font-size="10" fill="#666">30°</text>
+
+                </svg>
+            </div>
+
+            <div class="mt-6">
+                 <div class="flex justify-between items-center mb-2">
+                    <label for="inc-pressure" class="font-semibold text-gray-700">Tank Pressure (P<sub>gas</sub>)</label>
+                    <span class="bg-purple-100 text-purple-800 py-1 px-3 rounded font-mono font-bold" id="inc-val">760 mmHg</span>
+                </div>
+                <input type="range" id="inc-pressure" min="760" max="800" value="760" step="1">
+                <div class="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>760 mmHg</span>
+                    <span>800 mmHg</span>
+                </div>
+                <p class="mt-4 text-sm text-gray-600 bg-gray-50 p-3 rounded border">
+                    <strong>Physics:</strong> The liquid moves a distance <i>L</i> along the incline to achieve a vertical height <i>h</i>.
+                    <br><code class="text-xs">L = h / sin(&theta;)</code>. At 30°, the liquid moves 2mm for every 1mm of pressure head. This creates higher sensitivity.
+                </p>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- Constants & Config ---
+        const P_ATM = 760;
+        const SCALE_FACTOR_U = 3.5; // pixels per mmHg vertical for U-tube
+        const U_ZERO_Y = 200;       // Y position of zero pressure in U-tube
+        
+        // Inclined Config
+        const INC_START_X = 90;
+        const INC_START_Y = 250;
+        const INC_ANGLE_DEG = 30;
+        const INC_ANGLE_RAD = INC_ANGLE_DEG * (Math.PI / 180);
+        // How many pixels equal 1mm of REAL WORLD length in the diagram?
+        // Let's say visual scale is 3px = 1mm.
+        const VISUAL_SCALE = 3.5; 
+
+        // --- Elements ---
+        const uSlider = document.getElementById('u-pressure');
+        const uValDisplay = document.getElementById('u-val');
+        const uFluidPath = document.getElementById('u-fluid');
+        const uInfo = document.getElementById('info-u-delta');
+        const uLevelLeft = document.getElementById('u-level-left');
+        const uLevelRight = document.getElementById('u-level-right');
+
+        const incSlider = document.getElementById('inc-pressure');
+        const incValDisplay = document.getElementById('inc-val');
+        const incFluidLine = document.getElementById('inc-fluid');
+        const incInfo = document.getElementById('info-inc-delta');
+
+        // --- Initialization ---
+
+        function drawRulers() {
+            // Draw U-Tube Ruler
+            const uRulerGroup = document.getElementById('u-ruler');
+            for(let i=0; i<=20; i+=5) {
+                // Ticks go UP from zero (negative Y in SVG)
+                const yPos = -i * (SCALE_FACTOR_U); // Divide by 2 because h is split
+                
+                // Create SVG line
+                const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                line.setAttribute("x1", "0");
+                line.setAttribute("y1", yPos);
+                line.setAttribute("x2", "10");
+                line.setAttribute("y2", yPos);
+                line.setAttribute("stroke", "#64748b");
+                line.setAttribute("stroke-width", "1");
+                uRulerGroup.appendChild(line);
+
+                // Text
+                const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                text.setAttribute("x", "15");
+                text.setAttribute("y", yPos + 4);
+                text.setAttribute("font-size", "10");
+                text.setAttribute("fill", "#64748b");
+                text.textContent = i+" mm"; // Label is actual mmHg diff
+                uRulerGroup.appendChild(text);
+            }
+
+            // Draw Inclined Ruler
+            // We want to mark mmHg of Pressure, but positioned according to Length L
+            const incRulerGroup = document.getElementById('inc-ruler');
+            
+            // Mark every 10 mmHg of pressure
+            for(let p=0; p<=40; p+=10) {
+                // Calculate Length L for this pressure p
+                // h = p (since fluid is Hg and unit is mmHg)
+                // L = p / sin(30)
+                const L_mm = p / Math.sin(INC_ANGLE_RAD);
+                const L_px = L_mm * VISUAL_SCALE;
+
+                // Calculate coords relative to start
+                const dx = L_px * Math.cos(INC_ANGLE_RAD);
+                const dy = L_px * Math.sin(INC_ANGLE_RAD); // goes up (negative y relative)
+                
+                const tickX = INC_START_X + dx;
+                const tickY = INC_START_Y - dy;
+
+                // Tick Line (perpendicular to tube roughly)
+                const tickLen = 10;
+                // Normal vector angle is +90 deg to tube angle
+                const normAngle = INC_ANGLE_RAD + Math.PI/2;
+                
+                const x1 = tickX;
+                const y1 = tickY;
+                const x2 = tickX + tickLen * Math.cos(normAngle);
+                const y2 = tickY - tickLen * Math.sin(normAngle);
+
+                const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                line.setAttribute("x1", x1);
+                line.setAttribute("y1", y1);
+                line.setAttribute("x2", x2);
+                line.setAttribute("y2", y2);
+                line.setAttribute("stroke", "#64748b");
+                line.setAttribute("stroke-width", "1");
+                incRulerGroup.appendChild(line);
+
+                const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                text.setAttribute("x", x2 + 5);
+                text.setAttribute("y", y2);
+                text.setAttribute("font-size", "10");
+                text.setAttribute("fill", "#64748b");
+                text.textContent = p+" mm";
+                incRulerGroup.appendChild(text);
+            }
+        }
+
+        // --- Update Functions ---
+
+        function updateUTube() {
+            const P_gas = parseInt(uSlider.value);
+            uValDisplay.textContent = P_gas + " mmHg";
+            
+            const deltaP = P_gas - P_ATM; // e.g. 20 mmHg
+            
+            // In a U-Tube, the fluid moves h/2 up on one side and h/2 down on the other
+            // The total vertical difference is deltaP (in mmHg)
+            
+            const shift_mm = deltaP / 2; 
+            const shift_px = shift_mm * SCALE_FACTOR_U;
+
+            const leftY = U_ZERO_Y + shift_px;  // Pushed down
+            const rightY = U_ZERO_Y - shift_px; // Pushed up
+
+            // Update SVG Path for fluid
+            // Left leg starts at x=110, Right leg x=170
+            // The arc is at y=250.
+            const d = `M 110 ${leftY} L 110 250 A 30 30 0 0 0 170 250 L 170 ${rightY}`;
+            uFluidPath.setAttribute("d", d);
+
+            // Update info text
+            uInfo.textContent = `Δh = ${deltaP} mm`;
+
+            // Update red reference lines
+            uLevelLeft.setAttribute("y1", leftY);
+            uLevelLeft.setAttribute("y2", leftY);
+            uLevelRight.setAttribute("y1", rightY);
+            uLevelRight.setAttribute("y2", rightY);
+        }
+
+        function updateInclined() {
+            const P_gas = parseInt(incSlider.value);
+            incValDisplay.textContent = P_gas + " mmHg";
+
+            const h_vertical = P_gas - P_ATM; // delta P in mmHg
+            
+            // L = h / sin(theta)
+            const L_mm = h_vertical / Math.sin(INC_ANGLE_RAD);
+            
+            // Convert to pixels
+            const L_px = L_mm * VISUAL_SCALE;
+
+            // Calculate new End Coordinates based on angle
+            const dx = L_px * Math.cos(INC_ANGLE_RAD);
+            const dy = L_px * Math.sin(INC_ANGLE_RAD);
+
+            const endX = INC_START_X + dx;
+            const endY = INC_START_Y - dy;
+
+            incFluidLine.setAttribute("x2", endX);
+            incFluidLine.setAttribute("y2", endY);
+
+            // Update info text
+            // Show both vertical head (pressure) and Length along tube
+            incInfo.innerHTML = `Vertical Δh = ${h_vertical} mm<br>Inclined L = ${L_mm.toFixed(1)} mm`;
+        }
+
+        // --- Event Listeners ---
+        uSlider.addEventListener('input', updateUTube);
+        incSlider.addEventListener('input', updateInclined);
+
+        // --- Start ---
+        drawRulers();
+        updateUTube();
+        updateInclined();
+
+    </script>
+</body>
+</html>

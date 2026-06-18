@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catalytic Kinetics Lab</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex justify-center items-start p-4 md:p-8">
+
+    <div id="app" class="max-w-4xl w-full bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden transition-all duration-300">
+        <!-- Content will be injected here by JavaScript -->
+    </div>
+
+    <script>
+        // --- UTILITY: Mathematical Equivalence Checker ---
+        const checkEquivalence = (input, target, vars) => {
+            if (!input) return false;
+            try {
+                let cleanInput = input.replace(/\s+/g, '').replace(/\^/g, '**').replace(/k'/g, 'k_prime');
+                let cleanTarget = target.replace(/\s+/g, '').replace(/\^/g, '**').replace(/k'/g, 'k_prime');
+
+                const jsVars = vars.map(v => v === "k'" ? 'k_prime' : v);
+
+                const fnInput = new Function(...jsVars, `return ${cleanInput};`);
+                const fnTarget = new Function(...jsVars, `return ${cleanTarget};`);
+
+                for (let i = 0; i < 10; i++) {
+                    const testVals = jsVars.map(() => Math.random() * 5 + 1); // Random values between 1 and 6
+                    const valInput = fnInput(...testVals);
+                    const valTarget = fnTarget(...testVals);
+
+                    if (!isFinite(valInput) || !isFinite(valTarget)) continue; 
+                    if (Math.abs(valInput - valTarget) > 1e-4) {
+                        return false;
+                    }
+                }
+                return true;
+            } catch (e) {
+                return false; // Syntax error in user input
+            }
+        };
+
+        // --- DATA: Modules Configuration ---
+        const MODULES = {
+            1: {
+                title: "Module 1: Dual-Site Reaction (Langmuir-Hinshelwood)",
+                reaction: "A*S + B*S ⇄ AB*S + S",
+                description: "Consider the overall reaction A + B → AB. Both reactants must adsorb onto adjacent active sites (S) to react.",
+                vars: ["k'", 'Ka', 'Kb', 'Kab', 'Keq', 'Ca', 'Cb','Cab'],
+                derivations: [
+                    {
+                        id: 'adsorption',
+                        label: "1. Adsorption of A is Limiting",
+                        target: "k'*Ca/(1+Kb*Cb)",
+                        hints: [
+                            "Hint 1: If Adsorption of A limits, it acts as a bottleneck. Steps 2, 3, and 4 are at equilibrium, and A*S is consumed immediately (negligible).",
+                            "Hint 2: Find the fraction of vacant sites (Cv). Since A*S is negligible, the site balance denominator only has terms for vacant sites and B*S.",
+                            "Hint 3: The rate is proportional to Ca and vacant sites: k' * Ca * Cv. Substitute Cv = 1 / (1 + Kb * Cb)."
+                        ]
+                    },
+                    {
+                        id: 'reaction',
+                        label: "2. Surface Reaction is Limiting",
+                        target: "k'*Ka*Kb*Ca*Cb/(1+Ka*Ca+Kb*Cb)^2",
+                        hints: [
+                            "Hint 1: Reaction limits, so adsorption steps are at equilibrium. Rate is proportional to coverage of A and B: (C_AS) * (C_BS).",
+                            "Hint 2: Express coverages in terms of vacant sites (Cv). Remember that for a dual-site reaction, the site balance denominator is squared.",
+                            "Hint 3: Initial rate means no product AB is present. The numerator is k'*Ka*Kb*Ca*Cb and the denominator is (1 + Ka*Ca + Kb*Cb)^2."
+                        ]
+                    },
+                    {
+                        id: 'desorption',
+                        label: "3. Desorption of AB is Limiting",
+                        target: "k'*Keq*Ka*Kb*Ca*Cb/(1+Ka*Ca+Kb*Cb+Keq*Ka*Kb*Ca*Cb)",
+                        hints: [
+                            "Hint 1: Desorption limits, so surface reaction is at equilibrium. Rate is proportional to the coverage of the product, C_ABS.",
+                            "Hint 2: Find C_ABS from the surface reaction equilibrium: C_ABS = Keq * C_AS * C_BS / Cv. The site balance now includes S, A*S, B*S, and AB*S.",
+                            "Hint 3: The rate numerator is k' * (Keq*Ka*Kb*Ca*Cb). The denominator must include the term for the adsorbed product AB*S."
+                        ]
+                    }
+                ],
+                plot: {
+                    xAxis: "Concentration of A (Ca)",
+                    yAxis: "Initial Rate (r0)",
+                    dataFn: (x) => (40 * x) / Math.pow((2 + x), 2), // Maps to reaction limiting with Cb=2
+                    correctLimit: 'reaction',
+                    options: ['Adsorption of A', 'Surface Reaction', 'Desorption of AB'],
+                    question: "Notice the 'volcano' shape (rate decreases at high Ca due to site competition). Which step is rate-limiting based on your derived equations?"
+                }
+            },
+            2: {
+                title: "Module 2: Eley-Rideal Reaction",
+                reaction: "P*S + Q(g) ⇄ R*S",
+                description: "Consider the overall reaction P + Q → R. Reactant P adsorbs onto the surface, and then reacts directly with gaseous Q.",
+                vars: ["k'", 'Kp', 'Kr', 'Keq', 'Cp', 'Cq', 'Cr'],
+                derivations: [
+                    {
+                        id: 'adsorption',
+                        label: "1. Adsorption of P is Limiting",
+                        target: "k'*Cp",
+                        hints: [
+                            "Hint 1: Adsorption limits, meaning surface reaction and desorption are extremely fast.",
+                            "Hint 2: Because any adsorbed P reacts and desorbs immediately, the surface is mostly bare (Cv ≈ 1).",
+                            "Hint 3: The rate is simply the adsorption rate constant times the gas concentration of P. The denominator is just 1."
+                        ]
+                    },
+                    {
+                        id: 'reaction',
+                        label: "2. Surface Reaction is Limiting",
+                        target: "k'*Kp*Cp*Cq/(1+Kp*Cp)",
+                        hints: [
+                            "Hint 1: Reaction limits. The rate is proportional to the surface coverage of P (C_PS) and the gas phase concentration of Q (Cq).",
+                            "Hint 2: Since reaction is the bottleneck, P*S is in equilibrium with gas P. The denominator contains vacant sites and P*S.",
+                            "Hint 3: Rate = k' * (Kp*Cp / (1 + Kp*Cp)) * Cq."
+                        ]
+                    },
+                    {
+                        id: 'desorption',
+                        label: "3. Desorption of R is Limiting",
+                        target: "k'*Keq*Kp*Cp*Cq/(1+Kp*Cp+Keq*Kp*Cp*Cq)",
+                        hints: [
+                            "Hint 1: Desorption limits. Both the adsorption of P and the surface reaction to form R*S are at equilibrium.",
+                            "Hint 2: Rate is proportional to C_RS. Find C_RS using the equilibrium of the first two steps.",
+                            "Hint 3: The site balance has vacant sites, P*S, and R*S. Denominator is 1 + Kp*Cp + Keq*Kp*Cp*Cq."
+                        ]
+                    }
+                ],
+                plot: {
+                    xAxis: "Concentration of gas Q (Cq)",
+                    yAxis: "Initial Rate (r0)",
+                    dataFn: (x) => (20 * x) / (3 + 2 * x), // Maps to desorption limiting with Cp=2
+                    correctLimit: 'desorption',
+                    options: ['Adsorption of P', 'Surface Reaction', 'Desorption of R'],
+                    question: "Notice the rate saturates as Cq increases, but does not decrease (no competitive inhibition). Which step is rate-limiting?"
+                }
+            }
+        };
+
+        // --- STATE VARIABLES ---
+        let currentModule = 1;
+        let step = 0; // 0, 1, 2 = derivations, 3 = analysis
+        let inputValue = "";
+        let attempts = 0;
+        let errorMsg = "";
+
+        // --- RENDER LOGIC ---
+        function generatePlot(dataFn, xAxis, yAxis) {
+            const points = [];
+            for (let x = 0; x <= 10; x += 0.5) {
+                points.push({ x, y: dataFn(x) });
+            }
+            
+            const max_y = Math.max(...points.map(p => p.y)) * 1.2;
+            const scaleX = 25; // 250px / 10
+            const scaleY = 150 / (max_y === 0 ? 1 : max_y); // 150px height
+
+            const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x * scaleX} ${150 - p.y * scaleY}`).join(' ');
+
+            return `
+                <div class="relative w-full max-w-md mx-auto bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
+                    <div class="text-sm text-slate-500 mb-2 font-medium text-center">${yAxis} vs ${xAxis}</div>
+                    <svg width="280" height="180" class="mx-auto overflow-visible">
+                        <!-- Axes -->
+                        <line x1="0" y1="150" x2="260" y2="150" stroke="#cbd5e1" stroke-width="2" />
+                        <line x1="0" y1="0" x2="0" y2="150" stroke="#cbd5e1" stroke-width="2" />
+                        
+                        <!-- Grid and labels -->
+                        <text x="260" y="165" font-size="10" fill="#64748b" text-anchor="end">High</text>
+                        <text x="0" y="165" font-size="10" fill="#64748b" text-anchor="middle">0</text>
+                        
+                        <!-- Data Line -->
+                        <path d="${pathD}" fill="none" stroke="#2563eb" stroke-width="3" class="drop-shadow-sm" />
+                    </svg>
+                </div>
+            `;
+        }
+
+        function renderFinalScreen() {
+            return `
+                <div class="text-center mb-8">
+                    <div class="mx-auto bg-green-100 text-green-600 w-16 h-16 rounded-full flex items-center justify-center mb-4">
+                        <i data-lucide="check-circle-2" class="w-8 h-8"></i>
+                    </div>
+                    <h1 class="text-3xl font-bold text-slate-800">Lab Completed!</h1>
+                    <p class="text-slate-600 mt-2">You successfully derived the rate laws and identified the limiting steps.</p>
+                </div>
+
+                <div class="space-y-6">
+                    <div class="p-4 bg-blue-50 rounded-lg border border-blue-100">
+                        <h2 class="font-bold text-blue-900 text-lg mb-2">Module 1: Dual-Site Reaction</h2>
+                        <p class="text-sm text-blue-800 mb-1"><strong>Limiting Step:</strong> Surface Reaction</p>
+                        <p class="text-sm text-blue-800 font-mono bg-white p-2 rounded border border-blue-200">
+                            Rate = k'*Ka*Kb*Ca*Cb / (1+Ka*Ca+Kb*Cb)^2
+                        </p>
+                    </div>
+
+                    <div class="p-4 bg-indigo-50 rounded-lg border border-indigo-100">
+                        <h2 class="font-bold text-indigo-900 text-lg mb-2">Module 2: Eley-Rideal Reaction</h2>
+                        <p class="text-sm text-indigo-800 mb-1"><strong>Limiting Step:</strong> Desorption of Product</p>
+                        <p class="text-sm text-indigo-800 font-mono bg-white p-2 rounded border border-indigo-200">
+                            Rate = k'*Kr*Kp*Cp*Cq / (1+Kp*Cp+Kr*Kp*Cp*Cq)
+                        </p>
+                    </div>
+                </div>
+                
+                <button onclick="window.location.reload()" class="mt-8 w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-semibold transition-colors">
+                    Restart Lab
+                </button>
+            `;
+        }
+
+        function renderModuleScreen() {
+            const md = MODULES[currentModule];
+            const currentDerivation = step < 3 ? md.derivations[step] : null;
+
+            let html = `
+                <!-- Header -->
+                <div class="bg-slate-900 text-white p-6">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="beaker" class="text-blue-400"></i>
+                        <h1 class="text-xl font-bold">${md.title}</h1>
+                    </div>
+                    <p class="mt-2 text-slate-300 text-sm">${md.description}</p>
+                    <div class="mt-4 inline-block bg-slate-800 border border-slate-700 px-4 py-2 rounded-md font-mono text-blue-300">
+                        ${md.reaction}
+                    </div>
+                </div>
+
+                <!-- Content Area -->
+                <div class="p-6 md:p-8">
+                    <!-- Progress Indication -->
+                    <div class="flex justify-between mb-8 relative">
+                        <div class="absolute left-0 top-1/2 w-full h-1 bg-slate-100 -z-10 -translate-y-1/2 rounded-full"></div>
+                        ${[0, 1, 2, 3].map(idx => {
+                            const isPast = step > idx;
+                            const isCurrent = step === idx;
+                            const classes = isPast ? 'bg-blue-600 border-blue-600 text-white' : 
+                                            isCurrent ? 'bg-white border-blue-600 text-blue-600' : 'bg-white border-slate-300 text-slate-400';
+                            const icon = isPast ? `<i data-lucide="check-circle-2" class="w-4 h-4"></i>` : 
+                                         (idx === 3 ? `<i data-lucide="bar-chart-3" class="w-4 h-4"></i>` : idx + 1);
+                            return `<div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm border-2 transition-colors ${classes}">${icon}</div>`;
+                        }).join('')}
+                    </div>
+            `;
+
+            if (step > 0) {
+                const completedDerivations = md.derivations.slice(0, step);
+                const derivedCards = completedDerivations.map(d => {
+                    const cleanLabel = d.label.replace(/^\d+\.\s*/, '');
+                    return '<div class="bg-green-50 border border-green-200 p-3 rounded-lg shadow-sm">' +
+                           '<p class="text-xs text-green-800 font-semibold mb-1">' + cleanLabel + '</p>' +
+                           '<p class="font-mono text-sm text-slate-800 bg-white px-2 py-1 rounded border border-green-100 overflow-x-auto whitespace-nowrap">' + d.target + '</p>' +
+                           '</div>';
+                }).join('');
+
+                html += '<div class="mb-8 animate-fade-in">' +
+                        '<h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">Derived Rate Laws</h3>' +
+                        '<div class="grid grid-cols-1 md:grid-cols-3 gap-4">' + derivedCards + '</div>' +
+                        '</div>';
+            }
+
+            if (step < 3 && currentDerivation) {
+                let hintsHtml = '';
+                if (attempts > 0) hintsHtml += `<div class="animate-fade-in bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-md text-sm mb-3"><p class="font-bold flex items-center gap-2 mb-1"><i data-lucide="alert-circle" class="w-4 h-4"></i> Hint 1</p><p>${currentDerivation.hints[0]}</p></div>`;
+                if (attempts > 1) hintsHtml += `<div class="animate-fade-in bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-md text-sm mb-3"><p class="font-bold flex items-center gap-2 mb-1"><i data-lucide="alert-circle" class="w-4 h-4"></i> Hint 2</p><p>${currentDerivation.hints[1]}</p></div>`;
+                if (attempts > 2) hintsHtml += `<div class="animate-fade-in bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-md text-sm mb-3"><p class="font-bold flex items-center gap-2 mb-1"><i data-lucide="alert-circle" class="w-4 h-4"></i> Hint 3</p><p>${currentDerivation.hints[2]}</p></div>`;
+
+                const varsHtml = md.vars.map(v => {
+                    const safeV = v === "k'" ? "k\\'" : v;
+                    return `<button onclick="window.handleInputInsert('${safeV}')" class="px-3 py-1 bg-white border border-slate-300 rounded shadow-sm hover:bg-slate-100 font-mono text-sm text-slate-800 transition-colors">${v}</button>`;
+                }).join('');
+                const opsHtml = ['+', '*', '/', '(', ')', '^2'].map(op => `<button onclick="window.handleInputInsert('${op}')" class="px-3 py-1 bg-slate-200 border border-slate-300 rounded shadow-sm hover:bg-slate-300 font-mono text-sm text-slate-800 transition-colors">${op}</button>`).join('');
+
+                html += `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-900 mb-2">Derive the Initial Rate Law</h2>
+                            <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-md mb-6">
+                                <p class="font-semibold text-blue-900">${currentDerivation.label}</p>
+                            </div>
+                            <div class="space-y-4">
+                                ${hintsHtml}
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-50 p-6 rounded-xl border border-slate-200 flex flex-col justify-center">
+                            <label class="block text-sm font-medium text-slate-700 mb-2">Initial Rate Expression (-r<sub>0</sub>):</label>
+                            <input type="text" id="math-input" placeholder="e.g. k*Ka*Ca / (1+Ka*Ca)" class="w-full p-3 border border-slate-300 rounded-md font-mono text-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow" />
+                            
+                            ${errorMsg ? `<div class="mt-2 text-red-600 text-sm flex items-center gap-1"><i data-lucide="x-circle" class="w-4 h-4"></i> ${errorMsg}</div>` : ''}
+
+                            <div class="mt-4">
+                                <p class="text-xs text-slate-500 mb-2 uppercase tracking-wider font-semibold">Variables & Operators</p>
+                                <div class="flex flex-wrap gap-2">
+                                    ${varsHtml}
+                                    <div class="w-full h-px bg-slate-200 my-1"></div>
+                                    ${opsHtml}
+                                </div>
+                            </div>
+
+                            <div class="mt-8 flex gap-3">
+                                <button onclick="window.handleCheck()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors">
+                                    Check Answer <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                                </button>
+                                ${attempts > 2 ? `<button onclick="window.handleReveal()" class="px-4 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg font-semibold transition-colors">Reveal</button>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (step === 3) {
+                const optionsHtml = md.plot.options.map(opt => `
+                    <button onclick="window.handleAnswerSubmit('${opt}')" class="w-full text-left px-4 py-3 bg-white border border-blue-200 rounded-lg shadow-sm hover:border-blue-500 hover:shadow text-blue-900 font-medium transition-all flex justify-between items-center group">
+                        ${opt} Limiting
+                        <i data-lucide="arrow-right" class="w-4 h-4 opacity-0 group-hover:opacity-100 text-blue-500 transition-opacity"></i>
+                    </button>
+                `).join('');
+
+                html += `
+                    <div class="animate-fade-in flex flex-col items-center">
+                        <div class="text-center mb-6">
+                            <h2 class="text-2xl font-bold text-slate-900">Experimental Data</h2>
+                            <p class="text-slate-600 mt-2 max-w-lg mx-auto">We ran the reaction in the lab and plotted the initial rate against the concentration of the varying reactant.</p>
+                        </div>
+
+                        ${generatePlot(md.plot.dataFn, md.plot.xAxis, md.plot.yAxis)}
+
+                        <div class="mt-8 w-full max-w-lg bg-blue-50 border border-blue-200 p-6 rounded-xl">
+                            <p class="font-semibold text-blue-900 mb-4">${md.plot.question}</p>
+                            ${errorMsg ? `<p class="text-red-600 text-sm mb-3 flex items-center gap-1"><i data-lucide="alert-circle" class="w-4 h-4"></i>${errorMsg}</p>` : ''}
+                            <div class="space-y-3">
+                                ${optionsHtml}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            html += `</div>`;
+            return html;
+        }
+
+        function updateApp() {
+            const app = document.getElementById('app');
+
+            if (currentModule === 3) {
+                app.className = "max-w-2xl w-full bg-white rounded-xl shadow-xl overflow-hidden p-8 border border-slate-200 transition-all duration-300";
+                app.innerHTML = renderFinalScreen();
+            } else {
+                app.className = "max-w-4xl w-full bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden transition-all duration-300";
+                app.innerHTML = renderModuleScreen();
+
+                // Setup Input Event Listeners to persist typing locally without full re-render
+                const inputEl = document.getElementById('math-input');
+                if (inputEl) {
+                    inputEl.value = inputValue;
+                    inputEl.addEventListener('input', (e) => {
+                        inputValue = e.target.value;
+                    });
+                    inputEl.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') window.handleCheck();
+                    });
+                    inputEl.focus();
+                }
+            }
+            lucide.createIcons();
+        }
+
+        // --- EVENT HANDLERS ---
+        window.handleInputInsert = (val) => {
+            const inputEl = document.getElementById('math-input');
+            if (inputEl) {
+                const start = inputEl.selectionStart;
+                const end = inputEl.selectionEnd;
+                const currentVal = inputEl.value;
+                inputEl.value = currentVal.substring(0, start) + val + currentVal.substring(end);
+                inputValue = inputEl.value;
+                
+                inputEl.focus();
+                inputEl.selectionStart = inputEl.selectionEnd = start + val.length;
+            }
+        };
+
+        window.handleCheck = () => {
+            if (!inputValue.trim()) return;
+
+            const md = MODULES[currentModule];
+            const currentDerivation = md.derivations[step];
+            const isCorrect = checkEquivalence(inputValue, currentDerivation.target, md.vars);
+
+            if (isCorrect) {
+                errorMsg = "";
+                attempts = 0;
+                inputValue = "";
+                step++;
+            } else {
+                attempts++;
+                errorMsg = "Incorrect expression. Check the syntax and hints.";
+            }
+            updateApp();
+        };
+
+        window.handleReveal = () => {
+            const md = MODULES[currentModule];
+            inputValue = md.derivations[step].target;
+            errorMsg = "Answer revealed. Click 'Check Answer' to proceed.";
+            updateApp();
+        };
+
+        window.handleAnswerSubmit = (selectedOption) => {
+            const md = MODULES[currentModule];
+            if (selectedOption.toLowerCase().includes(md.plot.correctLimit)) {
+                if (currentModule === 1) {
+                    currentModule = 2;
+                    step = 0;
+                    attempts = 0;
+                    errorMsg = "";
+                } else {
+                    currentModule = 3; // Final screen
+                }
+            } else {
+                errorMsg = "Incorrect. Look closely at the shape of the curve.";
+            }
+            updateApp();
+        };
+
+        // Initialize App
+        updateApp();
+
+    </script>
+</body>
+</html>

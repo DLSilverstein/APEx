@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reaction Kinetics Lab</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .animate-spin-slow {
+            animation: spin 3s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 font-sans text-slate-800 min-h-screen p-4 md:p-8">
+    <div class="max-w-6xl mx-auto space-y-6">
+        
+        <!-- Header -->
+        <header class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex items-center space-x-4">
+            <div class="bg-indigo-100 p-3 rounded-xl">
+                <svg class="w-8 h-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.31"/><path d="M14 9.3V1.99"/><path d="M8.5 2h7"/><path d="M14 9.3a6.5 6.5 0 1 1-4 0"/><path d="M5.52 16h12.96"/></svg>
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold text-slate-900">Virtual Kinetics Laboratory</h1>
+                <p class="text-slate-500">Reactant A + Reactant B → Product C</p>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Left Column: Controls -->
+            <div class="lg:col-span-1 space-y-6">
+                
+                <!-- Control Panel -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                    <h2 class="text-lg font-semibold mb-4 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-slate-500" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 3h15"/><path d="M6 3v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V3"/><path d="M6 14h12"/></svg>
+                        Experiment Setup
+                    </h2>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">
+                                Initial Concentration C<sub>A0</sub> (mol/L)
+                            </label>
+                            <input type="number" id="ca0" step="0.1" min="0" placeholder="e.g. 1.0" class="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-50">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">
+                                Initial Concentration C<sub>B0</sub> (mol/L)
+                            </label>
+                            <input type="number" id="cb0" step="0.1" min="0" placeholder="e.g. 2.0" class="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-50">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">
+                                Reaction Time (minutes)
+                            </label>
+                            <input type="number" id="timeMin" step="15" min="15" placeholder="e.g. 15, 30, 45" class="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-50">
+                            <p class="text-xs text-slate-500 mt-1">Note: Must be a multiple of 15. 1 simulated min = 1 real sec.</p>
+                        </div>
+
+                        <div id="errorMsg" class="hidden flex items-start space-x-2 text-red-600 bg-red-50 p-3 rounded-lg text-sm">
+                            <svg class="w-5 h-5 shrink-0" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                            <span id="errorText">Error message here</span>
+                        </div>
+
+                        <button id="runBtn" onclick="startExperiment()" class="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white rounded-lg font-medium transition-colors flex justify-center items-center">
+                            <svg id="btnPlayIcon" class="w-5 h-5 mr-2 fill-current" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                            <svg id="btnSpinIcon" class="w-5 h-5 mr-2 animate-spin hidden" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            <span id="btnText">Run Experiment</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Status Panel -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                    <h2 class="text-lg font-semibold mb-4 text-slate-900">Lab Status</h2>
+                    
+                    <!-- Idle Status -->
+                    <div id="statusIdle" class="flex flex-col items-center justify-center py-6 text-emerald-600 bg-emerald-50 rounded-xl border border-emerald-100">
+                        <svg class="w-10 h-10 mb-2" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        <span class="font-medium">Ready for next experiment</span>
+                    </div>
+
+                    <!-- Running Status -->
+                    <div id="statusRunning" class="hidden space-y-4">
+                        <div class="flex flex-col items-center justify-center py-6 text-amber-600 bg-amber-50 rounded-xl border border-amber-100">
+                            <svg class="w-10 h-10 mb-2 animate-bounce" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.31"/><path d="M14 9.3V1.99"/><path d="M8.5 2h7"/><path d="M14 9.3a6.5 6.5 0 1 1-4 0"/><path d="M5.52 16h12.96"/></svg>
+                            <span class="font-medium text-lg">Reaction in Progress...</span>
+                            <span id="runningTimer" class="text-amber-700 font-mono text-xl mt-2">0s</span>
+                        </div>
+                        <div class="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+                            <div id="runningProgress" class="bg-amber-500 h-2.5 rounded-full transition-all duration-100 ease-linear" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Cleaning Status -->
+                    <div id="statusCleaning" class="hidden space-y-4">
+                        <div class="flex flex-col items-center justify-center py-6 text-sky-600 bg-sky-50 rounded-xl border border-sky-100">
+                            <svg class="w-10 h-10 mb-2 animate-spin-slow" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                            <span class="font-medium text-lg">Cleaning Equipment...</span>
+                            <span id="cleaningTimer" class="text-sky-700 font-mono text-xl mt-2">0s</span>
+                        </div>
+                        <div class="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+                            <div id="cleaningProgress" class="bg-sky-500 h-2.5 rounded-full transition-all duration-100 ease-linear" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Column: Lab Notebook -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 h-full min-h-[500px] flex flex-col">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-xl font-semibold flex items-center">
+                            <svg class="w-6 h-6 mr-2 text-slate-500" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>
+                            Lab Notebook
+                        </h2>
+                        <div class="flex items-center space-x-3">
+                            <span id="totalTimeBadge" class="text-sm font-medium px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full">
+                                Total Time: 0.00 hrs
+                            </span>
+                            <span id="entryCountBadge" class="text-sm font-medium px-3 py-1 bg-slate-100 text-slate-600 rounded-full">
+                                0 Entries
+                            </span>
+                        </div>
+                    </div>
+
+                    <div id="emptyState" class="flex-1 flex flex-col items-center justify-center text-slate-400">
+                        <svg class="w-16 h-16 mb-4 opacity-20" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>
+                        <p>Your experiment results will appear here.</p>
+                    </div>
+
+                    <div id="tableContainer" class="hidden overflow-x-auto">
+                        <table class="w-full text-left text-sm text-slate-600">
+                            <thead class="text-xs text-slate-700 uppercase bg-slate-50 border-b border-slate-200">
+                                <tr>
+                                    <th class="px-4 py-3 rounded-tl-lg">Exp #</th>
+                                    <th class="px-4 py-3">C<sub>A0</sub> (mol/L)</th>
+                                    <th class="px-4 py-3">C<sub>B0</sub> (mol/L)</th>
+                                    <th class="px-4 py-3">Time (min)</th>
+                                    <th class="px-4 py-3 bg-indigo-50 font-semibold text-indigo-900">Final C<sub>A</sub></th>
+                                    <th class="px-4 py-3 bg-indigo-50 font-semibold text-indigo-900 rounded-tr-lg">Final C<sub>B</sub></th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyTableBody">
+                                <!-- Rows injected via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // State variables
+        let appStatus = 'idle'; // 'idle', 'running', 'cleaning'
+        let timeLeft = 0;
+        let totalTimeForPhase = 1;
+        let expCount = 0;
+        let totalSimulatedHours = 0;
+        let timerInterval = null;
+        let currentExpParams = { ca0: 0, cb0: 0, timeMin: 0 };
+
+        // DOM Elements
+        const ca0Input = document.getElementById('ca0');
+        const cb0Input = document.getElementById('cb0');
+        const timeMinInput = document.getElementById('timeMin');
+        const runBtn = document.getElementById('runBtn');
+        const errorMsg = document.getElementById('errorMsg');
+        const errorText = document.getElementById('errorText');
+        
+        // Buttons UI elements
+        const btnPlayIcon = document.getElementById('btnPlayIcon');
+        const btnSpinIcon = document.getElementById('btnSpinIcon');
+        const btnText = document.getElementById('btnText');
+
+        // Status Elements
+        const statusIdle = document.getElementById('statusIdle');
+        const statusRunning = document.getElementById('statusRunning');
+        const statusCleaning = document.getElementById('statusCleaning');
+        const runningTimer = document.getElementById('runningTimer');
+        const runningProgress = document.getElementById('runningProgress');
+        const cleaningTimer = document.getElementById('cleaningTimer');
+        const cleaningProgress = document.getElementById('cleaningProgress');
+
+        // Notebook Elements
+        const emptyState = document.getElementById('emptyState');
+        const tableContainer = document.getElementById('tableContainer');
+        const historyTableBody = document.getElementById('historyTableBody');
+        const totalTimeBadge = document.getElementById('totalTimeBadge');
+        const entryCountBadge = document.getElementById('entryCountBadge');
+
+        // RK4 Integration 
+        function calculateConcentrations(initialCa, initialCb, tMins) {
+            const k = 0.0005; // Explicit reaction rate constant in (L/mol)^1.5/seconds
+            const tSecs = tMins * 60; // Convert minutes to seconds
+            const steps = 1000;
+            const h = tSecs / steps;
+            
+            let ca = initialCa;
+            const delta = initialCb - initialCa;
+
+            const f = (c) => {
+                const cb = c + delta;
+                if (c <= 0 || cb <= 0) return 0;
+                return -k * Math.pow(c, 2.0) * Math.pow(cb, 0.5);
+            };
+
+            for (let i = 0; i < steps; i++) {
+                const k1 = f(ca);
+                if (k1 === 0) break;
+                const k2 = f(ca + h * k1 / 2);
+                const k3 = f(ca + h * k2 / 2);
+                const k4 = f(ca + h * k3);
+                
+                ca = ca + (h / 6) * (k1 + 2 * k2 + 2 * k3 + k4);
+                
+                if (ca < 0) {
+                    ca = 0;
+                    break;
+                }
+            }
+            
+            let cb = ca + delta;
+            if (cb < 0) cb = 0;
+
+            return { finalCa: ca, finalCb: cb };
+        }
+
+        function showError(msg) {
+            errorText.textContent = msg;
+            errorMsg.classList.remove('hidden');
+        }
+
+        function hideError() {
+            errorMsg.classList.add('hidden');
+        }
+
+        function setInputsDisabled(disabled) {
+            ca0Input.disabled = disabled;
+            cb0Input.disabled = disabled;
+            timeMinInput.disabled = disabled;
+            runBtn.disabled = disabled;
+
+            if (disabled) {
+                btnPlayIcon.classList.add('hidden');
+                btnSpinIcon.classList.remove('hidden');
+                btnText.textContent = "Equipment in Use";
+            } else {
+                btnPlayIcon.classList.remove('hidden');
+                btnSpinIcon.classList.add('hidden');
+                btnText.textContent = "Run Experiment";
+            }
+        }
+
+        function updateUIStatus() {
+            statusIdle.classList.add('hidden');
+            statusRunning.classList.add('hidden');
+            statusCleaning.classList.add('hidden');
+
+            if (appStatus === 'idle') {
+                statusIdle.classList.remove('hidden');
+                setInputsDisabled(false);
+            } else if (appStatus === 'running') {
+                statusRunning.classList.remove('hidden');
+                setInputsDisabled(true);
+            } else if (appStatus === 'cleaning') {
+                statusCleaning.classList.remove('hidden');
+                setInputsDisabled(true);
+            }
+        }
+
+        function startExperiment() {
+            hideError();
+            const cA = parseFloat(ca0Input.value);
+            const cB = parseFloat(cb0Input.value);
+            const t = parseFloat(timeMinInput.value);
+
+            if (isNaN(cA) || isNaN(cB) || isNaN(t) || cA < 0 || cB < 0 || t <= 0) {
+                showError("Please enter valid, positive numbers for all parameters.");
+                return;
+            }
+
+            if (t % 15 !== 0) {
+                showError("Reaction time must be a multiple of 15 minutes (e.g., 15, 30, 45).");
+                return;
+            }
+
+            currentExpParams = { ca0: cA, cb0: cB, timeMin: t };
+            appStatus = 'running';
+            timeLeft = t;
+            totalTimeForPhase = t;
+            
+            updateUIStatus();
+            startTimer();
+        }
+
+        function finishExperiment() {
+            const { ca0: cA, cb0: cB, timeMin: t } = currentExpParams;
+            const { finalCa, finalCb } = calculateConcentrations(cA, cB, t);
+
+            expCount++;
+            totalSimulatedHours += (t / 60);
+
+            // Hide empty state, show table
+            emptyState.classList.add('hidden');
+            tableContainer.classList.remove('hidden');
+
+            // Add row
+            const tr = document.createElement('tr');
+            tr.className = "border-b border-slate-100 hover:bg-slate-50";
+            tr.innerHTML = `
+                <td class="px-4 py-3 font-medium text-slate-900">${expCount}</td>
+                <td class="px-4 py-3 font-mono">${cA}</td>
+                <td class="px-4 py-3 font-mono">${cB}</td>
+                <td class="px-4 py-3 font-mono">${t}</td>
+                <td class="px-4 py-3 font-mono bg-indigo-50/30 text-indigo-900 font-medium">${finalCa.toFixed(5)}</td>
+                <td class="px-4 py-3 font-mono bg-indigo-50/30 text-indigo-900 font-medium">${finalCb.toFixed(5)}</td>
+            `;
+            historyTableBody.appendChild(tr);
+
+            // Update Badges
+            totalTimeBadge.textContent = `Total Time: ${totalSimulatedHours.toFixed(2)} hrs`;
+            entryCountBadge.textContent = `${expCount} ${expCount === 1 ? 'Entry' : 'Entries'}`;
+
+            // Move to cleaning phase
+            appStatus = 'cleaning';
+            timeLeft = 5; // 5 seconds real-time cleaning
+            totalTimeForPhase = 5;
+            
+            updateUIStatus();
+            startTimer();
+        }
+
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+
+            timerInterval = setInterval(() => {
+                timeLeft -= 0.1;
+
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    timeLeft = 0;
+                    
+                    if (appStatus === 'running') {
+                        finishExperiment();
+                    } else if (appStatus === 'cleaning') {
+                        appStatus = 'idle';
+                        updateUIStatus();
+                    }
+                }
+
+                // Update Progress Bars
+                const progressPercentage = ((totalTimeForPhase - timeLeft) / totalTimeForPhase) * 100;
+                const timeText = Math.ceil(timeLeft) + 's';
+
+                if (appStatus === 'running') {
+                    runningTimer.textContent = timeText;
+                    runningProgress.style.width = progressPercentage + '%';
+                } else if (appStatus === 'cleaning') {
+                    cleaningTimer.textContent = timeText;
+                    cleaningProgress.style.width = progressPercentage + '%';
+                }
+
+            }, 100);
+        }
+    </script>
+</body>
+</html>

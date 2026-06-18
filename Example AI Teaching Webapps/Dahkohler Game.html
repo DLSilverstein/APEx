@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Damköhler Number Derivation Game</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- KaTeX for Math Rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
+        .katex-display { margin: 0 !important; }
+        .whiteboard-math .katex { font-size: 1.25em; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* Smooth scrolling for anchor jumps if needed */
+        html { scroll-behavior: smooth; }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-slate-900 text-white p-4 shadow-md flex justify-between items-center sticky top-0 z-50">
+        <div>
+            <h1 class="text-2xl font-bold text-blue-400">Reactor Design: The Damköhler Challenge</h1>
+            <p class="text-sm text-slate-400">ChE 423 Chemical Reactor Design and Analysis</p>
+        </div>
+        <div class="text-right">
+            <div class="text-lg font-bold">Score: <span id="score" class="text-green-400">0</span></div>
+            <div class="text-sm text-slate-400" id="progress-text">Module 0 / 4</div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow flex p-4 w-full">
+        
+        <!-- Start Screen -->
+        <div id="start-screen" class="bg-white p-8 rounded-xl shadow-xl max-w-2xl w-full text-center fade-in m-auto">
+            <h2 class="text-3xl font-bold text-slate-800 mb-4">Master the Damköhler Number</h2>
+            <p class="text-slate-600 mb-6 text-left">
+                The Damköhler number ($Da$) is a dimensionless group that relates the rate of reaction to the rate of transport (convection) in a reactor. 
+                <br><br>
+                Your task is to correctly derive $Da$ and the final performance equation ($X$ vs $Da$) for four different scenarios covering:
+                <ul class="list-disc text-left pl-8 mt-2 mb-4 space-y-1 text-slate-700 font-medium">
+                    <li>Reactions: $A + B \rightarrow C$ and $A \rightleftharpoons B$</li>
+                    <li>Reactors: CSTR and PFR</li>
+                </ul>
+                <p class="text-sm text-slate-500 text-left italic mb-6">Note: We are focusing strictly on reaction engineering (isothermal, homogeneous). Energy and mass transfer Damköhler numbers are excluded.</p>
+            </p>
+            <button onclick="startGame()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg transition transform hover:scale-105">
+                Start Derivations
+            </button>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-6 hidden m-auto">
+            
+            <!-- Left Column: Whiteboard -->
+            <div class="bg-[#1e293b] rounded-xl shadow-xl border-4 border-slate-700 flex flex-col lg:sticky lg:top-24 self-start w-full z-10">
+                <div class="bg-slate-800 text-slate-400 text-xs font-mono p-2 border-b border-slate-700 uppercase tracking-wider flex justify-between">
+                    <span>Active Derivation Board</span>
+                    <span id="scenario-title" class="text-blue-300 font-bold"></span>
+                </div>
+                <div class="p-6">
+                    <p id="scenario-desc" class="text-slate-300 text-sm mb-6 border-b border-slate-600 pb-4"></p>
+                    <div id="whiteboard-content" class="space-y-6 text-green-300 font-mono whiteboard-math">
+                        <!-- Mathematical steps will be appended here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Interactive Prompt -->
+            <div class="flex flex-col w-full">
+                <!-- Status/Feedback Bar -->
+                <div id="feedback-bar" class="rounded-lg p-4 mb-4 font-bold text-center opacity-0 transition-opacity duration-300">
+                    Feedback goes here
+                </div>
+
+                <!-- Question Card -->
+                <div class="bg-white p-6 rounded-xl shadow-lg flex flex-col">
+                    <div class="flex justify-between items-center mb-4">
+                        <span id="step-counter" class="text-sm font-bold text-blue-600 bg-blue-100 py-1 px-3 rounded-full">Step 1 of 5</span>
+                    </div>
+                    
+                    <h3 id="question-prompt" class="text-lg font-medium text-slate-800 mb-6">
+                        Loading question...
+                    </h3>
+
+                    <!-- Options Grid -->
+                    <div id="options-container" class="space-y-4">
+                        <!-- Buttons injected here -->
+                    </div>
+
+                    <!-- Next Button -->
+                    <div class="mt-6 text-right">
+                        <button id="next-btn" onclick="nextStep()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg shadow hidden transition">
+                            Next Step &rarr;
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- End Screen -->
+        <div id="end-screen" class="bg-white p-8 rounded-xl shadow-xl max-w-2xl w-full text-center hidden fade-in m-auto">
+            <h2 class="text-3xl font-bold text-slate-800 mb-4">Derivations Complete!</h2>
+            <p class="text-xl text-slate-600 mb-6">Final Score: <span id="final-score" class="font-bold text-blue-600">0</span></p>
+            <p class="text-slate-600 mb-8">You've successfully built the design equations and identified the Damköhler numbers for standard PFR and CSTR setups. Excellent work!</p>
+            <button onclick="location.reload()" class="bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 px-8 rounded-lg shadow-lg transition">
+                Return to Main Menu
+            </button>
+        </div>
+
+    </main>
+
+    <script>
+        // --- Game Data ---
+        // Contains the 4 required scenarios (CSTR/PFR for 2 reactions)
+        const gameData = [
+            {
+                id: 'cstr_2nd',
+                title: "Module 1: CSTR (A + B → C)",
+                desc: "Reactor: CSTR<br>Reaction: $A + B \\rightarrow C$<br>Assumptions: Elementary, isothermal, constant volume, equimolar feed ($C_{A0} = C_{B0}$).",
+                steps: [
+                    {
+                        prompt: "What is the general performance (design) equation for a CSTR?",
+                        options: [
+                            { latex: "V = F_{A0} \\int_0^X \\frac{dX}{-r_A}", isCorrect: false, hint: "That's for a plug-flow reactor, where concentration changes along the volume." },
+                            { latex: "V = \\frac{F_{A0} X}{-r_A}", isCorrect: true },
+                            { latex: "t = N_{A0} \\int_0^X \\frac{dX}{-r_A V}", isCorrect: false, hint: "That's for a batch reactor." }
+                        ],
+                        whiteboard: "\\text{Design Eq: } V = \\frac{F_{A0} X}{-r_A}"
+                    },
+                    {
+                        prompt: "Given $C_{A0} = C_{B0}$, what is the rate law $-r_A$ in terms of conversion $X$?",
+                        options: [
+                            { latex: "-r_A = k C_{A0} (1-X)", isCorrect: false, hint: "This reaction is second-order overall (elementary A+B)." },
+                            { latex: "-r_A = k C_{A0}^2 (1-X)^2", isCorrect: true },
+                            { latex: "-r_A = k C_{A0}^2 (1-X)", isCorrect: false, hint: "Don't forget that both C_A and C_B decrease with X." }
+                        ],
+                        whiteboard: "\\text{Rate Law: } -r_A = k C_{A0}^2 (1-X)^2"
+                    },
+                    {
+                        prompt: "Substitute the rate law into the design equation and group the known constants ($V, F_{A0}, k, C_{A0}$) on the left side.",
+                        options: [
+                            { latex: "\\frac{V k C_{A0}}{F_{A0}} = \\frac{X}{1-X}", isCorrect: false, hint: "Check your exponent on C_{A0} and (1-X)." },
+                            { latex: "\\frac{V k C_{A0}^2}{F_{A0}} = \\frac{X}{(1-X)^2}", isCorrect: true },
+                            { latex: "\\frac{V F_{A0}}{k C_{A0}^2} = X(1-X)^2", isCorrect: false, hint: "Make sure V and F_{A0} are correctly proportioned." }
+                        ],
+                        whiteboard: "\\text{Substituted: } \\frac{V k C_{A0}^2}{F_{A0}} = \\frac{X}{(1-X)^2}"
+                    },
+                    {
+                        prompt: "Recall space time $\\tau = \\frac{V C_{A0}}{F_{A0}}$. The Damköhler number ($Da$) represents the term on the left. What is $Da$ for this 2nd-order reaction?",
+                        options: [
+                            { latex: "Da = \\tau k", isCorrect: false, hint: "Look at the remaining C_{A0} terms after substituting tau." },
+                            { latex: "Da = \\tau k C_{A0}", isCorrect: true },
+                            { latex: "Da = \\tau k C_{A0}^2", isCorrect: false, hint: "One C_{A0} is absorbed into the space time definition." }
+                        ],
+                        whiteboard: "\\text{Damköhler No.: } Da = \\tau k C_{A0}"
+                    },
+                    {
+                        prompt: "Finally, substitute $Da$ and solve for conversion $X$ to get the performance equation: $Da = \\frac{X}{(1-X)^2}$.",
+                        options: [
+                            { latex: "X = \\frac{Da}{1+Da}", isCorrect: false, hint: "That's the solution for a 1st-order reaction." },
+                            { latex: "X = \\frac{(1+2Da) - \\sqrt{1+4Da}}{2Da}", isCorrect: true },
+                            { latex: "X = 1 - e^{-Da}", isCorrect: false, hint: "That's for a 1st-order PFR." }
+                        ],
+                        whiteboard: "\\text{Performance Eq: } X = \\frac{(1+2Da) - \\sqrt{1+4Da}}{2Da}"
+                    }
+                ]
+            },
+            {
+                id: 'pfr_2nd',
+                title: "Module 2: PFR (A + B → C)",
+                desc: "Reactor: Plug Flow Reactor (PFR)<br>Reaction: $A + B \\rightarrow C$<br>Assumptions: Elementary, constant density, equimolar feed.",
+                steps: [
+                    {
+                        prompt: "What is the design equation for a PFR?",
+                        options: [
+                            { latex: "V = \\frac{F_{A0} X}{-r_A}", isCorrect: false, hint: "That's the CSTR algebraic equation." },
+                            { latex: "V = F_{A0} \\int_0^X \\frac{dX}{-r_A}", isCorrect: true }
+                        ],
+                        whiteboard: "\\text{Design Eq: } V = F_{A0} \\int_0^X \\frac{dX}{-r_A}"
+                    },
+                    {
+                        prompt: "For equimolar $A+B \\rightarrow C$, what is $-r_A$ in terms of $X$?",
+                        options: [
+                            { latex: "-r_A = k C_{A0}^2 (1-X)^2", isCorrect: true },
+                            { latex: "-r_A = k C_{A0} (1-X)", isCorrect: false, hint: "It is a bimolecular elementary reaction." }
+                        ],
+                        whiteboard: "\\text{Rate Law: } -r_A = k C_{A0}^2 (1-X)^2"
+                    },
+                    {
+                        prompt: "Substitute $-r_A$ and integrate: $\\int \\frac{dX}{(1-X)^2} = \\frac{X}{1-X}$. Group constants on the left.",
+                        options: [
+                            { latex: "\\frac{V k C_{A0}^2}{F_{A0}} = \\frac{X}{1-X}", isCorrect: true },
+                            { latex: "\\frac{V k C_{A0}^2}{F_{A0}} = -\\ln(1-X)", isCorrect: false, hint: "That's the integral of 1/(1-X), which is for 1st-order." }
+                        ],
+                        whiteboard: "\\text{Integrated: } \\frac{V k C_{A0}^2}{F_{A0}} = \\frac{X}{1-X}"
+                    },
+                    {
+                        prompt: "Identify the Damköhler number ($Da$) for this reaction.",
+                        options: [
+                            { latex: "Da = \\tau k", isCorrect: false, hint: "It's a second-order reaction." },
+                            { latex: "Da = \\tau k C_{A0}", isCorrect: true }
+                        ],
+                        whiteboard: "\\text{Damköhler No.: } Da = \\tau k C_{A0}"
+                    },
+                    {
+                        prompt: "Substitute $Da$ to form the final performance equation: $Da = \\frac{X}{1-X}$. Solve for $X$.",
+                        options: [
+                            { latex: "X = \\frac{Da}{1+Da}", isCorrect: true },
+                            { latex: "X = 1 - e^{-Da}", isCorrect: false, hint: "This represents a 1st-order PFR." }
+                        ],
+                        whiteboard: "\\text{Performance Eq: } X = \\frac{Da}{1+Da}"
+                    }
+                ]
+            },
+            {
+                id: 'cstr_rev',
+                title: "Module 3: CSTR (A ⇌ B)",
+                desc: "Reactor: CSTR<br>Reaction: $A \\rightleftharpoons B$<br>Assumptions: Elementary, pure A feed ($C_{B0} = 0$). Let $X_e$ be equilibrium conversion.",
+                steps: [
+                    {
+                        prompt: "First, select the CSTR design equation.",
+                        options: [
+                            { latex: "V = F_{A0} \\int_0^X \\frac{dX}{-r_A}", isCorrect: false, hint: "PFR equation." },
+                            { latex: "V = \\frac{F_{A0} X}{-r_A}", isCorrect: true }
+                        ],
+                        whiteboard: "\\text{Design Eq: } V = \\frac{F_{A0} X}{-r_A}"
+                    },
+                    {
+                        prompt: "The rate law is $-r_A = k_f C_A - k_r C_B$. With pure A feed, how is this written in terms of $X$ and $X_e$? (Recall $X_e = \\frac{k_f}{k_f+k_r}$)",
+                        options: [
+                            { latex: "-r_A = k_f C_{A0} (1 - X)", isCorrect: false, hint: "This ignores the reverse reaction." },
+                            { latex: "-r_A = k_f C_{A0} (1 - X/X_e)", isCorrect: true },
+                            { latex: "-r_A = k_f C_{A0} (X_e - X)", isCorrect: false, hint: "Close, but factors out differently." }
+                        ],
+                        whiteboard: "\\text{Rate Law: } -r_A = k_f C_{A0} (1 - X/X_e)"
+                    },
+                    {
+                        prompt: "Substitute the rate law into the CSTR design equation and group constants on the left.",
+                        options: [
+                            { latex: "\\frac{V k_f C_{A0}}{F_{A0}} = \\frac{X}{1 - X/X_e}", isCorrect: true },
+                            { latex: "\\frac{V k_f C_{A0}}{F_{A0}} = X(1 - X/X_e)", isCorrect: false, hint: "-r_A belongs in the denominator." }
+                        ],
+                        whiteboard: "\\text{Substituted: } \\frac{V k_f C_{A0}}{F_{A0}} = \\frac{X}{1 - X/X_e}"
+                    },
+                    {
+                        prompt: "Identify the Damköhler number ($Da$) for this reversible reaction based on the forward rate constant.",
+                        options: [
+                            { latex: "Da = \\tau k_f C_{A0}", isCorrect: false, hint: "The forward reaction is 1st-order, so C_A0 cancels out." },
+                            { latex: "Da = \\tau k_f", isCorrect: true },
+                            { latex: "Da = \\tau (k_f + k_r)", isCorrect: false, hint: "Convention defines Da using the forward inlet rate." }
+                        ],
+                        whiteboard: "\\text{Damköhler No.: } Da = \\tau k_f"
+                    },
+                    {
+                        prompt: "Solve the equation $Da = \\frac{X}{1 - X/X_e}$ for conversion $X$.",
+                        options: [
+                            { latex: "X = \\frac{Da \\cdot X_e}{X_e + Da}", isCorrect: true },
+                            { latex: "X = X_e (1 - e^{-Da/X_e})", isCorrect: false, hint: "This contains an exponential, indicating a PFR integration." }
+                        ],
+                        whiteboard: "\\text{Performance Eq: } X = \\frac{Da \\cdot X_e}{X_e + Da}"
+                    }
+                ]
+            },
+            {
+                id: 'pfr_rev',
+                title: "Module 4: PFR (A ⇌ B)",
+                desc: "Reactor: PFR<br>Reaction: $A \\rightleftharpoons B$<br>Assumptions: Elementary, pure A feed.",
+                steps: [
+                    {
+                        prompt: "Select the PFR design equation.",
+                        options: [
+                            { latex: "V = \\frac{F_{A0} X}{-r_A}", isCorrect: false, hint: "CSTR equation." },
+                            { latex: "V = F_{A0} \\int_0^X \\frac{dX}{-r_A}", isCorrect: true }
+                        ],
+                        whiteboard: "\\text{Design Eq: } V = F_{A0} \\int_0^X \\frac{dX}{-r_A}"
+                    },
+                    {
+                        prompt: "What is the rate law $-r_A$?",
+                        options: [
+                            { latex: "-r_A = k_f C_{A0} (1 - X/X_e)", isCorrect: true },
+                            { latex: "-r_A = k_f C_{A0} (1 - X)", isCorrect: false, hint: "Must account for equilibrium X_e." }
+                        ],
+                        whiteboard: "\\text{Rate Law: } -r_A = k_f C_{A0} (1 - X/X_e)"
+                    },
+                    {
+                        prompt: "Substitute and integrate: $\\int \\frac{dX}{1 - X/X_e} = -X_e \\ln(1 - X/X_e)$. Group constants.",
+                        options: [
+                            { latex: "\\frac{V k_f C_{A0}}{F_{A0}} = -X_e \\ln(1 - X/X_e)", isCorrect: true },
+                            { latex: "\\frac{V k_f C_{A0}}{F_{A0}} = \\frac{X}{1 - X/X_e}", isCorrect: false, hint: "This is the algebraic CSTR version." }
+                        ],
+                        whiteboard: "\\text{Integrated: } \\frac{V k_f C_{A0}}{F_{A0}} = -X_e \\ln(1 - X/X_e)"
+                    },
+                    {
+                        prompt: "What is the Damköhler number ($Da$)?",
+                        options: [
+                            { latex: "Da = \\tau k_f", isCorrect: true },
+                            { latex: "Da = \\tau k_f / X_e", isCorrect: false, hint: "Da relies on purely the forward reaction at inlet." }
+                        ],
+                        whiteboard: "\\text{Damköhler No.: } Da = \\tau k_f"
+                    },
+                    {
+                        prompt: "Solve $Da = -X_e \\ln(1 - X/X_e)$ for conversion $X$.",
+                        options: [
+                            { latex: "X = X_e (1 - e^{-Da/X_e})", isCorrect: true },
+                            { latex: "X = \\frac{Da \\cdot X_e}{X_e + Da}", isCorrect: false, hint: "This is the CSTR solution." }
+                        ],
+                        whiteboard: "\\text{Performance Eq: } X = X_e (1 - e^{-Da/X_e})"
+                    }
+                ]
+            }
+        ];
+
+        // --- Game State ---
+        let currentModuleIndex = 0;
+        let currentStepIndex = 0;
+        let score = 0;
+        let isStepAnswered = false;
+
+        // --- DOM Elements ---
+        const startScreen = document.getElementById('start-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const endScreen = document.getElementById('end-screen');
+        
+        const scenarioTitle = document.getElementById('scenario-title');
+        const scenarioDesc = document.getElementById('scenario-desc');
+        const whiteboardContent = document.getElementById('whiteboard-content');
+        
+        const stepCounter = document.getElementById('step-counter');
+        const questionPrompt = document.getElementById('question-prompt');
+        const optionsContainer = document.getElementById('options-container');
+        const nextBtn = document.getElementById('next-btn');
+        const feedbackBar = document.getElementById('feedback-bar');
+        
+        const scoreDisplay = document.getElementById('score');
+        const progressText = document.getElementById('progress-text');
+        const finalScore = document.getElementById('final-score');
+
+        // --- Helper Functions ---
+        
+        // Renders KaTeX from a latex string
+        function renderMath(latexStr, displayMode = false) {
+            try {
+                return katex.renderToString(latexStr, {
+                    throwOnError: false,
+                    displayMode: displayMode
+                });
+            } catch (e) {
+                return latexStr; // Fallback
+            }
+        }
+
+        // Starts the game loop
+        function startGame() {
+            startScreen.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+            loadModule(0);
+        }
+
+        // Loads a specific scenario module
+        function loadModule(index) {
+            currentModuleIndex = index;
+            currentStepIndex = 0;
+            const moduleData = gameData[currentModuleIndex];
+            
+            // Update UI
+            progressText.innerText = `Module ${currentModuleIndex + 1} / ${gameData.length}`;
+            scenarioTitle.innerText = moduleData.title;
+            
+            // Parse math in description
+            let formattedDesc = moduleData.desc;
+            formattedDesc = formattedDesc.replace(/\$(.*?)\$/g, (match, p1) => renderMath(p1, false));
+            scenarioDesc.innerHTML = formattedDesc;
+            
+            // Clear whiteboard
+            whiteboardContent.innerHTML = '';
+            
+            loadStep(currentStepIndex);
+        }
+
+        // Loads a specific step within a module
+        function loadStep(stepIndex) {
+            isStepAnswered = false;
+            nextBtn.classList.add('hidden');
+            hideFeedback();
+            
+            const moduleData = gameData[currentModuleIndex];
+            const stepData = moduleData.steps[stepIndex];
+            
+            stepCounter.innerText = `Step ${stepIndex + 1} of ${moduleData.steps.length}`;
+            
+            // Parse math in prompt
+            let formattedPrompt = stepData.prompt;
+            formattedPrompt = formattedPrompt.replace(/\$(.*?)\$/g, (match, p1) => renderMath(p1, false));
+            questionPrompt.innerHTML = formattedPrompt;
+            
+            // Generate options
+            optionsContainer.innerHTML = '';
+            
+            // Shuffle options slightly for replayability (optional, keeping static for teaching flow)
+            stepData.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left bg-slate-50 border-2 border-slate-200 hover:border-blue-500 hover:bg-blue-50 text-slate-800 p-4 rounded-lg shadow-sm transition-all duration-200";
+                
+                // Add displaystyle to make fractions look nice inside buttons
+                btn.innerHTML = renderMath("\\displaystyle " + opt.latex, false);
+                
+                btn.onclick = () => handleAnswer(opt, btn);
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        // Handles user selecting an option
+        function handleAnswer(option, btnElement) {
+            if (isStepAnswered) return; // Prevent multiple clicks
+
+            if (option.isCorrect) {
+                isStepAnswered = true;
+                score += 10;
+                scoreDisplay.innerText = score;
+                
+                // Styling correct button
+                btnElement.classList.remove('border-slate-200', 'hover:border-blue-500', 'hover:bg-blue-50');
+                btnElement.classList.add('border-green-500', 'bg-green-50');
+                
+                showFeedback("Correct! Excellent deduction.", "success");
+                appendToWhiteboard(gameData[currentModuleIndex].steps[currentStepIndex].whiteboard);
+                
+                nextBtn.classList.remove('hidden');
+            } else {
+                // Styling incorrect button
+                btnElement.classList.remove('border-slate-200', 'hover:border-blue-500');
+                btnElement.classList.add('border-red-400', 'bg-red-50', 'opacity-50');
+                score = Math.max(0, score - 2); // Small penalty
+                scoreDisplay.innerText = score;
+                
+                showFeedback("Incorrect. " + (option.hint || "Try again!"), "error");
+            }
+        }
+
+        // Appends correct equation to the left-side whiteboard
+        function appendToWhiteboard(latex) {
+            const div = document.createElement('div');
+            div.className = "fade-in py-2 border-b border-slate-700/50";
+            div.innerHTML = renderMath(latex, true);
+            whiteboardContent.appendChild(div);
+            // In an LMS iframe, letting the natural scroll happen is best.
+            // If on mobile, we can gently scroll down to ensure options stay in view.
+            if (window.innerWidth < 1024) {
+               optionsContainer.scrollIntoView({ behavior: "smooth", block: "nearest" });
+            }
+        }
+
+        // Shows feedback bar
+        function showFeedback(message, type) {
+            feedbackBar.innerText = message;
+            feedbackBar.className = `rounded-lg p-4 mb-4 font-bold text-center transition-opacity duration-300 opacity-100 ${
+                type === 'success' ? 'bg-green-100 text-green-700 border border-green-300' : 'bg-red-100 text-red-700 border border-red-300'
+            }`;
+        }
+
+        function hideFeedback() {
+            feedbackBar.classList.remove('opacity-100');
+            feedbackBar.classList.add('opacity-0');
+        }
+
+        // Advances to next step or next module
+        function nextStep() {
+            currentStepIndex++;
+            if (currentStepIndex < gameData[currentModuleIndex].steps.length) {
+                loadStep(currentStepIndex);
+            } else {
+                // Module Complete
+                currentModuleIndex++;
+                if (currentModuleIndex < gameData.length) {
+                    loadModule(currentModuleIndex);
+                } else {
+                    // Game Complete
+                    endGame();
+                }
+            }
+        }
+
+        function endGame() {
+            gameScreen.classList.add('hidden');
+            endScreen.classList.remove('hidden');
+            finalScore.innerText = score;
+        }
+
+        // Initialization: Format math tags on start screen
+        document.addEventListener('DOMContentLoaded', () => {
+            const paragraphs = startScreen.querySelectorAll('p, li');
+            paragraphs.forEach(p => {
+                p.innerHTML = p.innerHTML.replace(/\$(.*?)\$/g, (match, p1) => renderMath(p1, false));
+            });
+        });
+
+    </script>
+</body>
+</html>

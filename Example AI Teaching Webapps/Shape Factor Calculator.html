@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sphericity & Effective Diameter Calculator</title>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Three.js for 3D Visualization -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <style>
+        body { margin: 0; overflow-x: hidden; font-family: 'Inter', sans-serif; }
+        #canvas-container { width: 100%; height: 100%; min-height: 400px; cursor: grab; }
+        #canvas-container:active { cursor: grabbing; }
+        .input-group { display: none; }
+        .input-group.active { display: block; }
+        
+        /* Custom scrollbar for sidebar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-gray-100 h-screen min-h-[650px] min-w-[320px] flex flex-col md:flex-row overflow-hidden">
+
+    <!-- Sidebar / Controls -->
+    <div class="w-full md:w-[400px] bg-white shadow-xl flex flex-col h-full z-10">
+        <div class="p-6 bg-slate-800 text-white shadow-md">
+            <h1 class="text-2xl font-bold mb-1">Shape Factor Module</h1>
+            <p class="text-sm text-slate-300">Understand Sphericity & Effective Diameter</p>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
+            
+            <!-- Shape Selection -->
+            <div>
+                <label for="shapeSelect" class="block text-sm font-semibold text-gray-700 mb-2">Select Packing Material</label>
+                <select id="shapeSelect" class="w-full border border-gray-300 rounded-md p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 transition-colors">
+                    <option value="prism">Rectangular Prism</option>
+                    <option value="ellipsoid">Ellipsoid</option>
+                    <option value="cylinder">Cylinder</option>
+                    <option value="raschig">Raschig Ring</option>
+                </select>
+            </div>
+
+            <!-- Dynamic Inputs -->
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <h3 class="text-sm font-semibold text-gray-800 mb-4 border-b pb-2">Dimensions</h3>
+                
+                <!-- Prism Inputs -->
+                <div id="inputs-prism" class="input-group active space-y-4">
+                    <div>
+                        <div class="flex justify-between text-sm mb-1"><label>Length (X)</label><span id="val-prism-l" class="font-mono text-blue-600">5.0</span></div>
+                        <input type="range" id="prism-l" min="1" max="10" step="0.1" value="5" class="w-full accent-blue-600">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-sm mb-1"><label>Width (Z)</label><span id="val-prism-w" class="font-mono text-blue-600">4.0</span></div>
+                        <input type="range" id="prism-w" min="1" max="10" step="0.1" value="4" class="w-full accent-blue-600">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-sm mb-1"><label>Height (Y)</label><span id="val-prism-h" class="font-mono text-blue-600">6.0</span></div>
+                        <input type="range" id="prism-h" min="1" max="10" step="0.1" value="6" class="w-full accent-blue-600">
+                    </div>
+                </div>
+
+                <!-- Ellipsoid Inputs -->
+                <div id="inputs-ellipsoid" class="input-group space-y-4">
+                    <div>
+                        <div class="flex justify-between text-sm mb-1"><label>Major Axis</label><span id="val-ellip-major" class="font-mono text-blue-600">8.0</span></div>
+                        <input type="range" id="ellip-major" min="1" max="15" step="0.1" value="8" class="w-full accent-blue-600">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-sm mb-1"><label>Minor Axis</label><span id="val-ellip-minor" class="font-mono text-blue-600">4.0</span></div>
+                        <input type="range" id="ellip-minor" min="1" max="15" step="0.1" value="4" class="w-full accent-blue-600">
+                    </div>
+                </div>
+
+                <!-- Cylinder Inputs -->
+                <div id="inputs-cylinder" class="input-group space-y-4">
+                    <div>
+                        <div class="flex justify-between text-sm mb-1"><label>Diameter</label><span id="val-cyl-d" class="font-mono text-blue-600">4.0</span></div>
+                        <input type="range" id="cyl-d" min="1" max="10" step="0.1" value="4" class="w-full accent-blue-600">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-sm mb-1"><label>Height</label><span id="val-cyl-h" class="font-mono text-blue-600">6.0</span></div>
+                        <input type="range" id="cyl-h" min="1" max="15" step="0.1" value="6" class="w-full accent-blue-600">
+                    </div>
+                </div>
+
+                <!-- Raschig Ring Inputs -->
+                <div id="inputs-raschig" class="input-group space-y-4">
+                    <div>
+                        <div class="flex justify-between text-sm mb-1"><label>Outer Diameter</label><span id="val-ras-do" class="font-mono text-blue-600">6.0</span></div>
+                        <input type="range" id="ras-do" min="2" max="10" step="0.1" value="6" class="w-full accent-blue-600">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-sm mb-1"><label>Inner Diameter</label><span id="val-ras-di" class="font-mono text-blue-600">4.0</span></div>
+                        <input type="range" id="ras-di" min="0.5" max="9.5" step="0.1" value="4" class="w-full accent-blue-600">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-sm mb-1"><label>Length</label><span id="val-ras-l" class="font-mono text-blue-600">6.0</span></div>
+                        <input type="range" id="ras-l" min="1" max="10" step="0.1" value="6" class="w-full accent-blue-600">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Panel -->
+            <div class="bg-blue-50 border border-blue-200 rounded-xl p-5 shadow-inner">
+                <h3 class="text-sm font-bold text-blue-900 mb-3 uppercase tracking-wider">Calculated Results</h3>
+                
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="bg-white p-3 rounded-lg border border-blue-100 shadow-sm">
+                        <div class="text-xs text-slate-500 font-semibold mb-1">Volume (V)</div>
+                        <div id="res-vol" class="text-lg font-mono text-slate-800">0.00</div>
+                    </div>
+                    <div class="bg-white p-3 rounded-lg border border-blue-100 shadow-sm">
+                        <div class="text-xs text-slate-500 font-semibold mb-1">Surface Area (S)</div>
+                        <div id="res-sa" class="text-lg font-mono text-slate-800">0.00</div>
+                    </div>
+                </div>
+                
+                <div class="bg-white p-4 rounded-lg border border-blue-100 shadow-sm mb-4">
+                    <div class="text-xs text-slate-500 font-semibold mb-1 flex justify-between items-center">
+                        <span>Effective Diameter (D<sub>eff</sub>)</span>
+                        <div class="relative group">
+                            <span class="text-blue-500 font-bold cursor-help px-2 py-1">?</span>
+                            <div class="absolute bottom-full right-0 mb-2 w-72 p-3 bg-slate-800 text-white text-xs rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 pointer-events-none">
+                                <p class="mb-2 border-b border-slate-600 pb-2 text-left whitespace-normal">Diameter of a sphere with the exact same volume (V) as the particle.</p>
+                                <div class="font-mono bg-slate-900 p-2 rounded text-center leading-relaxed whitespace-nowrap">
+                                    D<sub>eff</sub> = (6V / &pi;)<sup>1/3</sup><br>
+                                    <span id="formula-deff" class="text-blue-300 block mt-1"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="res-deff" class="text-3xl font-mono font-bold text-blue-600">0.00</div>
+                </div>
+
+                <div class="bg-white p-4 rounded-lg border-2 border-emerald-400 shadow-sm relative">
+                    <div class="absolute inset-0 overflow-hidden rounded-lg pointer-events-none">
+                        <div class="absolute top-0 right-0 w-16 h-16 bg-emerald-100 rounded-bl-full -mr-8 -mt-8 z-0"></div>
+                    </div>
+                    <div class="relative z-10">
+                        <div class="text-xs text-slate-500 font-semibold mb-1 flex justify-between items-center">
+                            <span>Sphericity (&#936;)</span>
+                            <div class="relative group">
+                                <span class="text-emerald-500 font-bold cursor-help px-2 py-1">?</span>
+                                <div class="absolute bottom-full right-0 mb-2 w-80 p-3 bg-slate-800 text-white text-xs rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 pointer-events-none">
+                                    <p class="mb-2 border-b border-slate-600 pb-2 text-left whitespace-normal">Ratio of the surface area of a sphere of equivalent volume to the actual particle surface area (S).</p>
+                                    <div class="font-mono bg-slate-900 p-2 rounded text-center leading-relaxed whitespace-nowrap">
+                                        &Psi; = (&pi;D<sub>eff</sub><sup>2</sup>) / S<br>
+                                        <span id="formula-sphericity" class="text-emerald-300 block mt-1"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="res-sphericity" class="text-4xl font-mono font-black text-emerald-600">0.000</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Legend -->
+            <div class="mt-auto pt-4 text-xs text-gray-500 flex flex-col gap-2">
+                <div class="flex items-center gap-2">
+                    <div class="w-4 h-4 rounded bg-blue-500 opacity-80 border border-blue-700"></div>
+                    <span>Particle Material (Solid)</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-4 h-4 rounded-full border-2 border-orange-400 bg-orange-100 bg-opacity-20 flex items-center justify-center">
+                        <div class="w-full h-[1px] bg-orange-400 rotate-45"></div>
+                    </div>
+                    <span>Equivalent Volume Sphere (Wireframe)</span>
+                </div>
+                <p class="italic mt-2">Rotate the 3D view with your mouse to compare the particle geometry against its effective sphere sharing the same centroid.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3D Visualization Area -->
+    <div class="flex-1 relative bg-slate-900 shadow-inner">
+        <div id="canvas-container"></div>
+        <div class="absolute top-4 right-4 pointer-events-none">
+            <div class="bg-black/50 backdrop-blur-md text-white px-4 py-2 rounded-lg border border-white/20 text-sm font-medium shadow-lg">
+                Centroid-Aligned Comparison
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Globals for Three.js ---
+        let scene, camera, renderer, controls;
+        let particleMesh = null;
+        let sphereMesh = null;
+
+        // --- Initialize the Application ---
+        window.onload = function() {
+            initThreeJS();
+            setupEventListeners();
+            updateCalculationsAnd3D(); // Initial render
+        };
+
+        // --- Math & Sphericity Functions ---
+        
+        // Sphericity formula: Psi = (pi^(1/3) * (6 * V)^(2/3)) / S
+        function calculateSphericity(vol, sa) {
+            if (sa <= 0) return 0;
+            return (Math.pow(Math.PI, 1/3) * Math.pow(6 * vol, 2/3)) / sa;
+        }
+
+        // Effective Diameter: Deff = (6 * V / pi)^(1/3)
+        function calculateEffectiveDiameter(vol) {
+            return Math.pow((6 * vol) / Math.PI, 1/3);
+        }
+
+        // Knud Thomsen's formula for Ellipsoid Surface Area
+        function ellipsoidSurfaceArea(a, b, c) {
+            const p = 1.6075;
+            const ap = Math.pow(a, p);
+            const bp = Math.pow(b, p);
+            const cp = Math.pow(c, p);
+            return 4 * Math.PI * Math.pow((ap*bp + ap*cp + bp*cp) / 3, 1/p);
+        }
+
+        // --- Core Update Logic ---
+        function updateCalculationsAnd3D() {
+            const shape = document.getElementById('shapeSelect').value;
+            let V = 0, S = 0;
+            let geometry;
+
+            if (shape === 'prism') {
+                const l = parseFloat(document.getElementById('prism-l').value);
+                const w = parseFloat(document.getElementById('prism-w').value);
+                const h = parseFloat(document.getElementById('prism-h').value);
+                
+                V = l * w * h;
+                S = 2 * (l*w + l*h + w*h);
+                
+                // BoxGeometry(width, height, depth) -> mapping X:l, Y:h, Z:w
+                geometry = new THREE.BoxGeometry(l, h, w);
+            } 
+            else if (shape === 'ellipsoid') {
+                const major = parseFloat(document.getElementById('ellip-major').value);
+                const minor = parseFloat(document.getElementById('ellip-minor').value);
+                
+                // Assume spheroid revolves around major axis. Y is up in ThreeJS.
+                // Semi-axes
+                const a = minor / 2; // X
+                const b = major / 2; // Y (Major)
+                const c = minor / 2; // Z
+                
+                V = (4/3) * Math.PI * a * b * c;
+                S = ellipsoidSurfaceArea(a, b, c);
+
+                geometry = new THREE.SphereGeometry(1, 64, 32);
+                geometry.scale(a, b, c);
+            }
+            else if (shape === 'cylinder') {
+                const d = parseFloat(document.getElementById('cyl-d').value);
+                const h = parseFloat(document.getElementById('cyl-h').value);
+                const r = d / 2;
+
+                V = Math.PI * Math.pow(r, 2) * h;
+                S = (2 * Math.PI * r * h) + (2 * Math.PI * Math.pow(r, 2));
+
+                geometry = new THREE.CylinderGeometry(r, r, h, 64);
+            }
+            else if (shape === 'raschig') {
+                let d_out = parseFloat(document.getElementById('ras-do').value);
+                let d_in = parseFloat(document.getElementById('ras-di').value);
+                const L = parseFloat(document.getElementById('ras-l').value);
+
+                // Validation: Inner diameter must be less than outer
+                if (d_in >= d_out) {
+                    d_in = d_out - 0.2; // Prevent impossible geometry
+                    if (d_in < 0.1) d_in = 0.1;
+                    document.getElementById('ras-di').value = d_in;
+                    document.getElementById('val-ras-di').innerText = d_in.toFixed(1);
+                }
+
+                const ro = d_out / 2;
+                const ri = d_in / 2;
+
+                V = Math.PI * (Math.pow(ro, 2) - Math.pow(ri, 2)) * L;
+                
+                const outerSA = 2 * Math.PI * ro * L;
+                const innerSA = 2 * Math.PI * ri * L;
+                const endSA = 2 * Math.PI * (Math.pow(ro, 2) - Math.pow(ri, 2));
+                S = outerSA + innerSA + endSA;
+
+                // Create Extruded hollow cylinder
+                const shape2D = new THREE.Shape();
+                shape2D.absarc(0, 0, ro, 0, Math.PI * 2, false);
+                const holePath = new THREE.Path();
+                holePath.absarc(0, 0, ri, 0, Math.PI * 2, true);
+                shape2D.holes.push(holePath);
+
+                const extrudeSettings = { depth: L, bevelEnabled: false, curveSegments: 64 };
+                geometry = new THREE.ExtrudeGeometry(shape2D, extrudeSettings);
+                
+                // Center and rotate to align length with Y-axis for consistency
+                geometry.center();
+                geometry.rotateX(Math.PI / 2);
+            }
+
+            // Calculate Effective Diameter & Sphericity
+            const d_eff = calculateEffectiveDiameter(V);
+            const sphericity = calculateSphericity(V, S);
+
+            // Update UI
+            document.getElementById('res-vol').innerText = V.toFixed(2);
+            document.getElementById('res-sa').innerText = S.toFixed(2);
+            document.getElementById('res-deff').innerText = d_eff.toFixed(2);
+            document.getElementById('res-sphericity').innerText = sphericity.toFixed(4);
+
+            // Update Formula texts with live calculations
+            document.getElementById('formula-deff').innerHTML = 
+                `= (6(${V.toFixed(2)}) / 3.14)<sup>1/3</sup> = ${d_eff.toFixed(2)}`;
+            
+            document.getElementById('formula-sphericity').innerHTML = S > 0 ? 
+                `= (3.14(${d_eff.toFixed(2)}<sup>2</sup>)) / ${S.toFixed(2)} = ${sphericity.toFixed(4)}` : 
+                `= 0`;
+
+            // Update 3D Scene
+            render3DShapes(geometry, d_eff);
+        }
+
+        // --- Three.js Implementation ---
+        function initThreeJS() {
+            const container = document.getElementById('canvas-container');
+            
+            scene = new THREE.Scene();
+            // Deep dark slate background to make colors pop
+            scene.background = new THREE.Color('#0f172a');
+            
+            // Add faint grid helper for scale perspective
+            const gridHelper = new THREE.GridHelper(20, 20, 0x334155, 0x1e293b);
+            gridHelper.position.y = -8;
+            scene.add(gridHelper);
+
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+            camera.position.set(10, 8, 12);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.minDistance = 2;
+            controls.maxDistance = 50;
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight1.position.set(10, 20, 10);
+            scene.add(directionalLight1);
+            
+            const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.3);
+            directionalLight2.position.set(-10, -10, -10);
+            scene.add(directionalLight2);
+
+            window.addEventListener('resize', onWindowResize, false);
+            
+            animate();
+        }
+
+        function render3DShapes(particleGeom, effectiveDiameter) {
+            // Remove old meshes
+            if (particleMesh) scene.remove(particleMesh);
+            if (sphereMesh) scene.remove(sphereMesh);
+
+            // 1. Solid Particle Material
+            const particleMat = new THREE.MeshStandardMaterial({ 
+                color: 0x0ea5e9, // Sky Blue
+                roughness: 0.3,
+                metalness: 0.1,
+                side: THREE.DoubleSide
+            });
+            particleMesh = new THREE.Mesh(particleGeom, particleMat);
+            
+            // Enable edge rendering for better visual definition of shapes
+            const edgesGeometry = new THREE.EdgesGeometry(particleGeom);
+            const edgesMaterial = new THREE.LineBasicMaterial({ color: 0x0284c7, linewidth: 1 });
+            const edges = new THREE.LineSegments(edgesGeometry, edgesMaterial);
+            particleMesh.add(edges);
+            
+            scene.add(particleMesh);
+
+            // 2. Equivalent Effective Sphere
+            const sphereGeom = new THREE.SphereGeometry(effectiveDiameter / 2, 32, 32);
+            const sphereMat = new THREE.MeshStandardMaterial({ 
+                color: 0xf59e0b, // Amber/Orange
+                wireframe: true,
+                transparent: true,
+                opacity: 0.4
+            });
+            sphereMesh = new THREE.Mesh(sphereGeom, sphereMat);
+            scene.add(sphereMesh);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update(); // Required if damping enabled
+            
+            // Subtle slow rotation of the whole setup if desired, but letting the user control it is better.
+            // if(particleMesh) particleMesh.rotation.y += 0.002;
+            // if(sphereMesh) sphereMesh.rotation.y += 0.002;
+            
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('canvas-container');
+            if (!container || !camera || !renderer) return;
+            
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        // --- UI Events Setup ---
+        function setupEventListeners() {
+            const shapeSelect = document.getElementById('shapeSelect');
+            
+            // Shape Change
+            shapeSelect.addEventListener('change', function(e) {
+                // Hide all input groups
+                document.querySelectorAll('.input-group').forEach(el => el.classList.remove('active'));
+                // Show the selected one
+                document.getElementById('inputs-' + e.target.value).classList.add('active');
+                updateCalculationsAnd3D();
+            });
+
+            // Bind all range sliders to update label and trigger calculations
+            const sliders = document.querySelectorAll('input[type="range"]');
+            sliders.forEach(slider => {
+                slider.addEventListener('input', function() {
+                    // Update corresponding text label (e.g., 'val-prism-l')
+                    const valId = 'val-' + this.id;
+                    const valDisplay = document.getElementById(valId);
+                    if(valDisplay) {
+                        valDisplay.innerText = parseFloat(this.value).toFixed(1);
+                    }
+                    updateCalculationsAnd3D();
+                });
+            });
+        }
+    </script>
+</body>
+</html>

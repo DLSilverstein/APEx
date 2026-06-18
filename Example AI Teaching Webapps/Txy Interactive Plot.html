@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Benzene-Toluene Txy Diagram</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Inter font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Use Inter font */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom styles for canvas drawing */
+        canvas {
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 h-full flex flex-col lg:flex-row p-4 lg:p-8 gap-6">
+
+    <!-- ===== Controls & Info Panel ===== -->
+    <div class="w-full lg:w-96 lg:flex-shrink-0 bg-white p-6 rounded-xl shadow-lg space-y-6 h-fit">
+        <h1 class="text-2xl font-bold text-gray-800">Benzene-Toluene T-xy</h1>
+
+        <!-- Constant Value Input -->
+        <div>
+            <label for="constantValue" id="constantLabel" class="block text-sm font-medium text-gray-700 mb-1">Constant Pressure (mmHg)</label>
+            <div class="relative">
+                <input type="number" id="constantValue" name="constantValue" value="760" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-16">
+                <span id="constantUnit" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500">mmHg</span>
+            </div>
+        </div>
+        
+        <hr class="border-gray-200">
+
+        <!-- Information Panel -->
+        <div id="infoPanel" class="min-h-[150px]">
+            <h2 class="text-lg font-semibold text-gray-800 mb-2">Click on the Plot</h2>
+            <p class="text-gray-600">Click anywhere on the diagram to see phase information, compositions, and relative amounts (for VLE).</p>
+        </div>
+    </div>
+
+    <!-- ===== Main Content Area (Canvas) ===== -->
+    <div class="flex-grow flex flex-col gap-6 min-w-0">
+        <!-- Canvas for Plot -->
+        <div class="w-full bg-white p-4 rounded-xl shadow-lg">
+            <canvas id="vleCanvas" width="800" height="600" class="w-full h-auto rounded-lg"></canvas>
+        </div>
+    </div>
+
+    <script type="module">
+        // ===== Global State =====
+        let canvas, ctx;
+        let constantValueInput, infoPanel;
+        
+        // Plot data
+        let plotData = { bubble: [], dew: [] }; // Stores [x, y] points
+        let plotBounds = { xMin: 0, xMax: 1, yMin: 0, yMax: 100 };
+        const plotPadding = { top: 40, right: 40, bottom: 50, left: 60 };
+        let plotWidth, plotHeight; // Pixel dimensions of plot area
+
+        // Click state
+        let clickedInfo = null; // Stores info about the last click
+
+        // ===== Thermodynamic Constants =====
+        // Antoine parameters (log10(P_mmHg) = A - B / (T_C + C))
+        const antoine = {
+            benzene: { A: 6.89272, B: 1203.531, C: 219.888 }, // Component 1 (Benzene)
+            toluene: { A: 6.95087, B: 1342.311, C: 219.187 }  // Component 2 (Toluene)
+        };
+
+        // ===== Helper Functions =====
+        
+        /**
+         * Calculates vapor pressure (mmHg) from temperature (°C)
+         */
+        function calcP_sat(params, T_C) {
+            return 10**(params.A - params.B / (T_C + params.C));
+        }
+
+        /**
+         * Calculates boiling temperature (°C) from pressure (mmHg)
+         */
+        function calcT_boil(params, P_mmHg) {
+            return params.B / (params.A - Math.log10(P_mmHg)) - params.C;
+        }
+
+        /**
+         * Simple bisection root-finding algorithm
+         */
+        function bisection(f, a, b, maxIter = 100, tol = 1e-6) {
+            let fa = f(a);
+            let fb = f(b);
+
+            if (fa * fb >= 0) {
+                if (Math.abs(fa) < Math.abs(fb)) return a;
+                return b;
+            }
+
+            for (let i = 0; i < maxIter; i++) {
+                const c = (a + b) / 2;
+                const fc = f(c);
+                if (Math.abs(fc) < tol || (b - a) / 2 < tol) return c;
+                if (fa * fc < 0) { b = c; fb = fc; } 
+                else { a = c; fa = fc; }
+            }
+            return (a + b) / 2;
+        }
+
+        // ===== T-xy Calculation Function =====
+
+        function calcIdealTxy(P, pA, pB) {
+            const T_boil1 = calcT_boil(pA, P); // Benzene
+            const T_boil2 = calcT_boil(pB, P); // Toluene
+            const T_min = Math.min(T_boil1, T_boil2);
+            const T_max = Math.max(T_boil1, T_boil2);
+            const steps = 101;
+            const bubbleLine = [];
+            const dewLine = [];
+
+            for (let i = 0; i < steps; i++) {
+                // --- Bubble Line (given x1, find T_bubble) ---
+                const x1 = i / (steps - 1);
+                const f_bubble = (T) => x1 * calcP_sat(pA, T) + (1 - x1) * calcP_sat(pB, T) - P;
+                const T_bubble = bisection(f_bubble, T_min - 10, T_max + 10);
+                bubbleLine.push([x1, T_bubble]);
+                
+                // --- Dew Line (use same T_bubble to find y1) ---
+                const y1 = (x1 * calcP_sat(pA, T_bubble)) / P;
+                dewLine.push([y1, T_bubble]);
+            }
+            return { bubble: bubbleLine, dew: dewLine.sort((a,b) => a[0] - b[0]), yMin: T_min, yMax: T_max };
+        }
+
+        // ===== Main Calculation Orchestrator =====
+
+        function calculatePlotData() {
+            const value = parseFloat(constantValueInput.value);
+            let pA = antoine.benzene;
+            let pB = antoine.toluene;
+            
+            let result = calcIdealTxy(value, pA, pB);
+            
+            // Store results
+            plotData.bubble = result.bubble;
+            plotData.dew = result.dew;
+            
+            // Set plot bounds with a 5% margin
+            const yRange = result.yMax - result.yMin;
+            plotBounds.yMin = result.yMin - yRange * 0.05;
+            plotBounds.yMax = result.yMax + yRange * 0.05;
+            plotBounds.xMin = 0;
+            plotBounds.xMax = 1;
+        }
+
+        // ===== Canvas Drawing Functions =====
+
+        // --- Coordinate Mapping ---
+        function mapX(plotX) {
+            return plotPadding.left + (plotX - plotBounds.xMin) / (plotBounds.xMax - plotBounds.xMin) * plotWidth;
+        }
+
+        function mapY(plotY) {
+            return plotPadding.top + (1 - (plotY - plotBounds.yMin) / (plotBounds.yMax - plotBounds.yMin)) * plotHeight;
+        }
+
+        function unmapX(canvasX) {
+            return plotBounds.xMin + (canvasX - plotPadding.left) / plotWidth * (plotBounds.xMax - plotBounds.xMin);
+        }
+
+        function unmapY(canvasY) {
+            return plotBounds.yMin + (1 - (canvasY - plotPadding.top) / plotHeight) * (plotBounds.yMax - plotBounds.yMin);
+        }
+
+        // --- Drawing ---
+        function drawAxes() {
+            ctx.strokeStyle = '#9ca3af'; // gray-400
+            ctx.fillStyle = '#4b5563'; // gray-600
+            ctx.lineWidth = 1;
+            ctx.font = '12px Inter';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            const yTicks = 5;
+            const xTicks = 5;
+
+            // --- Gridlines ---
+            ctx.strokeStyle = '#e5e7eb'; // gray-200 (light gray)
+            ctx.lineWidth = 1;
+            ctx.setLineDash([2, 3]); // Dashed lines
+
+            // Horizontal Gridlines
+            for (let i = 0; i <= yTicks; i++) {
+                const yVal = plotBounds.yMin + i * (plotBounds.yMax - plotBounds.yMin) / yTicks;
+                ctx.beginPath();
+                ctx.moveTo(mapX(0), mapY(yVal));
+                ctx.lineTo(mapX(1), mapY(yVal));
+                ctx.stroke();
+            }
+
+            // Vertical Gridlines
+            for (let i = 0; i <= xTicks; i++) {
+                const xVal = i / xTicks;
+                ctx.beginPath();
+                ctx.moveTo(mapX(xVal), mapY(plotBounds.yMin));
+                ctx.lineTo(mapX(xVal), mapY(plotBounds.yMax));
+                ctx.stroke();
+            }
+            
+            ctx.setLineDash([]); // Reset line dash
+            // --- End Gridlines ---
+
+
+            // --- Axes (drawn on top of grid) ---
+            ctx.strokeStyle = '#9ca3af'; // gray-400
+            ctx.fillStyle = '#4b5563'; // gray-600
+            ctx.lineWidth = 1;
+
+            // Y-Axis
+            ctx.beginPath();
+            ctx.moveTo(mapX(0), mapY(plotBounds.yMin));
+            ctx.lineTo(mapX(0), mapY(plotBounds.yMax));
+            ctx.stroke();
+
+            // Y-Axis Ticks
+            // const yTicks = 5; // Moved up
+            for (let i = 0; i <= yTicks; i++) {
+                const yVal = plotBounds.yMin + i * (plotBounds.yMax - plotBounds.yMin) / yTicks;
+                ctx.beginPath();
+                ctx.moveTo(mapX(0) - 5, mapY(yVal));
+                ctx.lineTo(mapX(0), mapY(yVal));
+                ctx.stroke();
+                ctx.save();
+                ctx.textAlign = 'right';
+                ctx.fillText(yVal.toFixed(1), mapX(0) - 8, mapY(yVal));
+                ctx.restore();
+            }
+
+            // X-Axis
+            ctx.beginPath();
+            ctx.moveTo(mapX(0), mapY(plotBounds.yMin));
+            ctx.lineTo(mapX(1), mapY(plotBounds.yMin));
+            ctx.stroke();
+
+            // X-Axis Ticks
+            // const xTicks = 5; // Moved up
+            for (let i = 0; i <= xTicks; i++) {
+                const xVal = i / xTicks;
+                ctx.beginPath();
+                ctx.moveTo(mapX(xVal), mapY(plotBounds.yMin));
+                ctx.lineTo(mapX(xVal), mapY(plotBounds.yMin) + 5);
+                ctx.stroke();
+                ctx.fillText(xVal.toFixed(1), mapX(xVal), mapY(plotBounds.yMin) + 15);
+            }
+
+            // Axis Labels
+            ctx.font = '14px Inter';
+            ctx.fillText('x_benzene, y_benzene (Mole Fraction Benzene)', mapX(0.5), mapY(plotBounds.yMin) + 35);
+            
+            ctx.save();
+            ctx.translate(plotPadding.left - 45, plotPadding.top + plotHeight / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText('Temperature (°C)', 0, 0);
+            ctx.restore();
+        }
+
+        function drawPlotLines() {
+            // Fill Regions
+            ctx.globalAlpha = 0.05;
+            
+            // Liquid Region (Subcooled Liquid)
+            ctx.fillStyle = 'blue';
+            ctx.beginPath();
+            plotData.bubble.forEach((p, i) => {
+                if (i === 0) ctx.moveTo(mapX(p[0]), mapY(p[1]));
+                else ctx.lineTo(mapX(p[0]), mapY(p[1]));
+            });
+            ctx.lineTo(mapX(1), mapY(plotBounds.yMin));
+            ctx.lineTo(mapX(0), mapY(plotBounds.yMin));
+            ctx.closePath();
+            ctx.fill();
+
+            // Vapor Region (Superheated Vapor)
+            ctx.fillStyle = 'red';
+            ctx.beginPath();
+            plotData.dew.forEach((p, i) => {
+                if (i === 0) ctx.moveTo(mapX(p[0]), mapY(p[1]));
+                else ctx.lineTo(mapX(p[0]), mapY(p[1]));
+            });
+            ctx.lineTo(mapX(1), mapY(plotBounds.yMax));
+            ctx.lineTo(mapX(0), mapY(plotBounds.yMax));
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.globalAlpha = 1.0;
+
+            // Draw Bubble Line
+            ctx.strokeStyle = '#3b82f6'; // blue-500
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            plotData.bubble.forEach((p, i) => {
+                if (i === 0) ctx.moveTo(mapX(p[0]), mapY(p[1]));
+                else ctx.lineTo(mapX(p[0]), mapY(p[1]));
+            });
+            ctx.stroke();
+
+            // Draw Dew Line
+            ctx.strokeStyle = '#ef4444'; // red-500
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            plotData.dew.forEach((p, i) => {
+                if (i === 0) ctx.moveTo(mapX(p[0]), mapY(p[1]));
+                else ctx.lineTo(mapX(p[0]), mapY(p[1]));
+            });
+            ctx.stroke();
+            
+            // Legend
+            ctx.fillStyle = '#3b82f6';
+            ctx.fillRect(mapX(0.7), mapY(plotBounds.yMax) + 5, 20, 10);
+            ctx.fillStyle = '#4b5563';
+            ctx.textAlign = 'left';
+            ctx.fillText('Bubble Line (L)', mapX(0.7) + 25, mapY(plotBounds.yMax) + 10);
+            
+            ctx.fillStyle = '#ef4444';
+            ctx.fillRect(mapX(0.7), mapY(plotBounds.yMax) + 20, 20, 10);
+            ctx.fillStyle = '#4b5563';
+            ctx.textAlign = 'left';
+            ctx.fillText('Dew Line (V)', mapX(0.7) + 25, mapY(plotBounds.yMax) + 25);
+        }
+
+        function drawClickInfo() {
+            if (!clickedInfo) return;
+
+            const { z, val, phase, x, y, L, V } = clickedInfo;
+            const canvasX = mapX(z);
+            const canvasY = mapY(val);
+
+            // Draw clicked point
+            ctx.fillStyle = '#9333ea'; // purple-600 (Colorblind-safe)
+            ctx.beginPath();
+            ctx.arc(canvasX, canvasY, 5, 0, 2 * Math.PI);
+            ctx.fill();
+
+            if (phase === 'VLE') {
+                // Draw tie-line
+                ctx.strokeStyle = '#6b7280'; // gray-500
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([4, 4]);
+                ctx.beginPath();
+                ctx.moveTo(mapX(x), canvasY);
+                ctx.lineTo(mapX(y), canvasY);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                
+                // Draw liquid point on bubble line
+                ctx.fillStyle = '#3b82f6'; // blue-500
+                ctx.beginPath();
+                ctx.arc(mapX(x), canvasY, 4, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                // Draw vapor point on dew line
+                ctx.fillStyle = '#ef4444'; // red-500
+                ctx.beginPath();
+                ctx.arc(mapX(y), canvasY, 4, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+        }
+
+        // ===== Interpolation Functions =====
+        
+        // Find y at a given x in a data series [[x1, y1], [x2, y2], ...]
+        function interpolate(data, x) {
+            for (let i = 0; i < data.length - 1; i++) {
+                if (x >= data[i][0] && x <= data[i+1][0]) {
+                    const [x0, y0] = data[i];
+                    const [x1, y1] = data[i+1];
+                    // Handle vertical segment
+                    if (x1 === x0) return y0; 
+                    return y0 + (y1 - y0) * (x - x0) / (x1 - x0);
+                }
+            }
+            if (x < data[0][0]) return data[0][1];
+            return data[data.length - 1][1];
+        }
+        
+        // Find x at a given y in a data series
+        function interpolate_inv(data, y) {
+            for (let i = 0; i < data.length - 1; i++) {
+                const [x0, y0] = data[i];
+                const [x1, y1] = data[i+1];
+                if ((y >= y0 && y <= y1) || (y <= y0 && y >= y1)) {
+                    // Check for vertical segment
+                    if (y1 === y0) return x0;
+                    return x0 + (x1 - x0) * (y - y0) / (y1 - y0);
+                }
+            }
+            // Handle edge cases
+            let closest = data.reduce((prev, curr) => {
+                return (Math.abs(curr[1] - y) < Math.abs(prev[1] - y) ? curr : prev);
+            });
+            return closest[0];
+        }
+
+        // ===== Event Handlers =====
+
+        function onControlsChange() {
+            clickedInfo = null; // Clear click on redraw
+            updateInfoPanel();
+            mainDraw();
+        }
+
+        function onCanvasClick(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            const canvasX = (e.clientX - rect.left) * scaleX;
+            const canvasY = (e.clientY - rect.top) * scaleY;
+
+            // Check if click is inside plot area
+            if (canvasX < plotPadding.left || canvasX > (canvas.width - plotPadding.right) ||
+                canvasY < plotPadding.top || canvasY > (canvas.height - plotPadding.bottom)) {
+                clickedInfo = null;
+                updateInfoPanel();
+                mainDraw();
+                return;
+            }
+
+            const z = unmapX(canvasX); // Overall composition
+            const val = unmapY(canvasY); // T or P value
+            
+            const y_bubble = interpolate(plotData.bubble, z);
+            const y_dew = interpolate(plotData.dew, z);
+            
+            let phase, x = null, y = null, L = null, V = null;
+            
+            // Determine phase
+            if (val < y_bubble) {
+                phase = 'Subcooled Liquid';
+                x = z;
+                L = 1.0; V = 0.0;
+            } else if (val > y_dew) {
+                phase = 'Superheated Vapor';
+                y = z;
+                L = 0.0; V = 1.0;
+            } else {
+                phase = 'VLE';
+                // Find tie-line
+                x = interpolate_inv(plotData.bubble, val);
+                y = interpolate_inv(plotData.dew, val);
+                // Lever rule
+                if (y !== x) {
+                    L = (y - z) / (y - x);
+                    V = (z - x) / (y - x);
+                } else {
+                    L = 0.5; V = 0.5; // Should not happen in ideal
+                }
+            }
+
+            clickedInfo = { z, val, phase, x, y, L, V };
+            updateInfoPanel();
+            mainDraw();
+        }
+        
+        function updateInfoPanel() {
+            if (!clickedInfo) {
+                infoPanel.innerHTML = `
+                    <h2 class="text-lg font-semibold text-gray-800 mb-2">Click on the Plot</h2>
+                    <p class="text-gray-600">Click anywhere on the diagram to see phase information, compositions, and relative amounts (for VLE).</p>
+                `;
+                return;
+            }
+            
+            const { z, val, phase, x, y, L, V } = clickedInfo;
+            const valLabel = 'Temp';
+            const valUnit = '°C';
+
+            let phaseColor = 'text-gray-700';
+            if (phase === 'VLE') phaseColor = 'text-green-600';
+            else if (phase.includes('Liquid')) phaseColor = 'text-blue-600';
+            else if (phase.includes('Vapor')) phaseColor = 'text-red-600';
+            
+            let html = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <h3 class="text-sm font-medium text-gray-500">Phase</h3>
+                        <p class="text-xl font-semibold ${phaseColor}">${phase}</p>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-medium text-gray-500">${valLabel}</h3>
+                        <p class="text-xl font-semibold text-gray-700">${val.toFixed(2)} ${valUnit}</p>
+                    </div>
+                    <div class="md:col-span-2">
+                        <h3 class="text-sm font-medium text-gray-500">Overall (z_benz)</h3>
+                        <p class="text-xl font-semibold text-gray-700">${z.toFixed(3)}</p>
+                    </div>
+                `;
+            
+            if (phase === 'VLE') {
+                html += `
+                    <div>
+                        <h3 class="text-sm font-medium text-gray-500">Liquid (x_benz)</h3>
+                        <p class="text-xl font-semibold text-blue-600">${x.toFixed(3)}</p>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-medium text-gray-500">Vapor (y_benz)</h3>
+                        <p class="text-xl font-semibold text-red-600">${y.toFixed(3)}</p>
+                    </div>
+                    <div class="md:col-span-2">
+                        <h3 class="text-sm font-medium text-gray-500">Phase Amounts</h3>
+                        <div class="w-full bg-gray-200 rounded-full h-2.5 mt-2 overflow-hidden">
+                            <div class="bg-blue-500 h-2.5" style="width: ${L*100}%"></div>
+                        </div>
+                        <div class="flex justify-between text-sm mt-1">
+                            <span class="font-medium text-blue-600">Liquid: ${(L*100).toFixed(1)}%</span>
+                            <span class="font-medium text-red-600">Vapor: ${(V*100).toFixed(1)}%</span>
+                        </div>
+                    </div>
+                `;
+            } else if (phase.includes('Liquid')) {
+                 html += `
+                    <div class="md:col-span-2">
+                        <h3 class="text-sm font-medium text-gray-500">Liquid (x_benz)</h3>
+                        <p class="text-xl font-semibold text-blue-600">${x.toFixed(3)}</p>
+                    </div>
+                 `;
+            } else { // Vapor
+                html += `
+                    <div class="md:col-span-2">
+                        <h3 class="text-sm font-medium text-gray-500">Vapor (y_benz)</h3>
+                        <p class="text-xl font-semibold text-red-600">${y.toFixed(3)}</p>
+                    </div>
+                 `;
+            }
+            
+            html += `</div>`;
+            infoPanel.innerHTML = html;
+        }
+
+        // ===== Main Draw Function =====
+        function mainDraw() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Calculate plot data first
+            calculatePlotData();
+            
+            // Draw
+            drawAxes();
+            drawPlotLines();
+            drawClickInfo();
+        }
+
+        // ===== Initialization =====
+        function init() {
+            canvas = document.getElementById('vleCanvas');
+            ctx = canvas.getContext('2d');
+            
+            // Set internal plot dimensions
+            plotWidth = canvas.width - plotPadding.left - plotPadding.right;
+            plotHeight = canvas.height - plotPadding.top - plotPadding.bottom;
+            
+            // Get controls
+            constantValueInput = document.getElementById('constantValue');
+            infoPanel = document.getElementById('infoPanel');
+            
+            // Add event listeners
+            constantValueInput.addEventListener('change', onControlsChange);
+            canvas.addEventListener('click', onCanvasClick);
+            
+            // Initial draw
+            onControlsChange();
+        }
+
+        // Run init on load
+        window.addEventListener('load', init);
+
+    </script>
+</body>
+</html>

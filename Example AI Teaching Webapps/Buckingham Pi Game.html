@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rank & Buckingham-Pi Matrix Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .animate-fade-in {
+            animation: fadeIn 0.4s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-slate-100 p-4 md:p-8 font-sans selection:bg-blue-200">
+
+    <div class="max-w-2xl mx-auto">
+        <!-- Breadcrumbs -->
+        <div class="flex items-center gap-2 mb-8 text-sm font-medium text-slate-400" id="breadcrumbs">
+            <span id="crumb-intro" class="text-blue-600 transition-colors">Intro</span>
+            <span class="opacity-50">/</span>
+            <span id="crumb-defs" class="transition-colors">Definitions</span>
+            <span class="opacity-50">/</span>
+            <span id="crumb-walkthrough" class="transition-colors">Walkthrough</span>
+            <span class="opacity-50">/</span>
+            <span id="crumb-game" class="transition-colors">Practice</span>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 md:p-8 min-h-[500px] relative">
+            
+            <!-- STAGE: INTRO -->
+            <div id="stage-intro" class="space-y-6 animate-fade-in text-slate-800">
+                <div class="bg-blue-600 text-white p-8 rounded-2xl shadow-lg text-center">
+                    <h1 class="text-3xl font-bold mb-4">Matrix Rank & The Buckingham-Pi Theorem</h1>
+                    <p class="text-lg opacity-90">Mastering dimensional analysis for Fluid Mechanics.</p>
+                </div>
+                
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                    <h2 class="text-xl font-bold text-slate-800 mb-3 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        Why are we learning this?
+                    </h2>
+                    <p class="mb-4 leading-relaxed">
+                        In fluid mechanics, the <strong>Buckingham-Pi Theorem</strong> is used to simplify complex physical problems by grouping variables into dimensionless parameters (Pi terms). 
+                    </p>
+                    <div class="bg-slate-50 p-4 rounded-lg border-l-4 border-blue-500 font-medium">
+                        Number of Pi Terms = (Total Variables, <i>n</i>) - (Rank of Dimensional Matrix, <i>r</i>)
+                    </div>
+                    <p class="mt-4 leading-relaxed">
+                        While <i>r</i> is often simply the number of primary dimensions involved (like Mass, Length, Time, so <i>r</i> = 3), <strong>this is not always true</strong>. To guarantee you have the correct number of Pi terms, you must mathematically prove the <strong>Rank</strong> of the dimensional matrix.
+                    </p>
+                </div>
+
+                <button onclick="setStage('defs')" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-colors">
+                    Learn the Basics 
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                </button>
+            </div>
+
+            <!-- STAGE: DEFS -->
+            <div id="stage-defs" class="space-y-6 animate-fade-in hidden">
+                <h2 class="text-2xl font-bold text-slate-800 border-b pb-2">Math Refresher: The Toolkit</h2>
+                
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                        <h3 class="font-bold text-lg text-blue-700 mb-2 flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                            Matrix Rank
+                        </h3>
+                        <p class="text-slate-600 text-sm">
+                            The maximum number of <strong>linearly independent</strong> rows or columns in a matrix. In fluids, this tells us how many truly independent physical dimensions we are working with.
+                        </p>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                        <h3 class="font-bold text-lg text-blue-700 mb-2 flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                            Determinant
+                        </h3>
+                        <p class="text-slate-600 text-sm">
+                            A scalar value calculated from a <strong>square</strong> matrix. For a 3x3 matrix, if the determinant is NOT zero (<i>det</i> &ne; 0), the vectors are independent, and the rank is 3.
+                        </p>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                        <h3 class="font-bold text-lg text-blue-700 mb-2 flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                            Submatrix (Minor)
+                        </h3>
+                        <p class="text-slate-600 text-sm">
+                            A smaller square matrix formed by deleting entire rows and columns from the original matrix. Used to find rank when the full matrix determinant is zero.
+                        </p>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                        <h3 class="font-bold text-lg text-blue-700 mb-2 flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                            Non-Square (3x4)
+                        </h3>
+                        <p class="text-slate-600 text-sm">
+                            Dimensional matrices are often 3x4 or larger. The max rank is the smaller dimension (3). Check the 3x3 submatrices; if ANY has a non-zero determinant, rank = 3.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex gap-4">
+                    <button onclick="setStage('intro')" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-3 rounded-xl transition-colors">Back</button>
+                    <button onclick="setStage('walkthrough')" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors">
+                        Start Walkthrough 
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- STAGE: WALKTHROUGH -->
+            <div id="stage-walkthrough" class="space-y-6 animate-fade-in hidden text-slate-800">
+                <h2 class="text-2xl font-bold border-b pb-2">Walkthrough: Finding the Rank</h2>
+                <p class="text-slate-600">Let's find the rank of this classic 3x3 matrix.</p>
+                
+                <div id="walkthrough-matrix1"></div>
+
+                <div id="walkthrough-step1" class="bg-blue-50 p-4 rounded-lg border border-blue-100 animate-fade-in hidden">
+                    <h3 class="font-bold text-blue-800 mb-2">Step 1: Check the 3x3 Determinant</h3>
+                    <p class="font-mono text-sm mb-2 text-slate-700 bg-white p-2 rounded">
+                        det(A) = 1(5&times;9 - 6&times;8) - 2(4&times;9 - 6&times;7) + 3(4&times;8 - 5&times;7)<br/>
+                        det(A) = 1(45 - 48) - 2(36 - 42) + 3(32 - 35)<br/>
+                        det(A) = 1(-3) - 2(-6) + 3(-3)<br/>
+                        det(A) = -3 + 12 - 9 = 0
+                    </p>
+                    <p class="text-sm font-medium">Because the determinant is <strong class="text-red-600">zero</strong>, the rows are linearly dependent. <strong>The rank is NOT 3.</strong></p>
+                </div>
+
+                <div id="walkthrough-step2" class="bg-indigo-50 p-4 rounded-lg border border-indigo-100 animate-fade-in hidden">
+                    <h3 class="font-bold text-indigo-800 mb-2">Step 2: Check 2x2 Submatrices (Minors)</h3>
+                    <p class="text-sm mb-2">We step down. Is the rank 2? We check the 2x2 submatrices. Let's pick the top-left one:</p>
+                    <div id="walkthrough-matrix2"></div>
+                    <p class="font-mono text-sm mb-2 text-slate-700 bg-white p-2 rounded">
+                        det = (1 &times; 5) - (2 &times; 4) = 5 - 8 = -3
+                    </p>
+                    <p class="text-sm font-medium">Because this 2x2 determinant is <strong class="text-green-600">non-zero (-3)</strong>, we have found a set of linearly independent vectors of size 2.</p>
+                    <div class="mt-4 p-3 bg-green-100 text-green-800 font-bold text-center rounded-lg border border-green-300">
+                        Therefore, the Rank of this matrix is 2.
+                    </div>
+                </div>
+
+                <div class="flex gap-4 pt-4">
+                    <button id="walkthrough-btn" onclick="nextWalkthroughStep()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-colors">
+                        Reveal Next Step
+                    </button>
+                    <button id="walkthrough-finish-btn" onclick="setStage('game')" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl items-center justify-center gap-2 transition-colors hidden">
+                        I'm Ready to Practice 
+                        <svg class="w-5 h-5 inline ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- STAGE: GAME -->
+            <div id="stage-game" class="space-y-6 animate-fade-in hidden text-slate-800">
+                <div class="flex justify-between items-center text-sm font-bold text-slate-500 uppercase tracking-wider">
+                    <span id="game-progress">Question 1 of 3</span>
+                    <span id="game-score">Score: 0</span>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                    <h2 id="game-title" class="text-xl font-bold text-blue-800 mb-2"></h2>
+                    <p id="game-context" class="text-slate-600 mb-6 text-sm"></p>
+                    
+                    <div id="game-matrix"></div>
+
+                    <div class="text-center font-medium mb-4 mt-6">What is the Rank of this matrix?</div>
+                    
+                    <div class="grid grid-cols-3 gap-4" id="game-buttons">
+                        <!-- Buttons injected via JS -->
+                    </div>
+                </div>
+
+                <div id="game-explanation" class="p-5 rounded-xl border animate-fade-in flex gap-4 hidden">
+                    <div class="mt-1" id="game-explanation-icon"></div>
+                    <div>
+                        <h3 id="game-explanation-title" class="font-bold text-lg mb-1"></h3>
+                        <p id="game-explanation-text" class="text-slate-700 text-sm leading-relaxed"></p>
+                    </div>
+                </div>
+
+                <button id="game-next-btn" onclick="nextQuestion()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl transition-colors justify-center items-center gap-2 hidden">
+                    <span id="game-next-text">Next Question</span>
+                    <svg class="w-5 h-5 inline ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                </button>
+            </div>
+
+            <!-- STAGE: RESULTS -->
+            <div id="stage-results" class="text-center space-y-6 animate-fade-in py-8 hidden">
+                <div class="inline-block p-6 rounded-full bg-blue-100 mb-4 text-blue-600">
+                    <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+                <h2 class="text-3xl font-bold text-slate-800">Practice Complete!</h2>
+                <p class="text-xl text-slate-600">You scored <strong class="text-blue-600 text-2xl" id="final-score">0</strong> out of 3</p>
+                
+                <div class="bg-slate-50 p-6 rounded-xl border text-left text-slate-700 max-w-md mx-auto">
+                    <h3 class="font-bold mb-2">What's Next in Fluid Mechanics?</h3>
+                    <p class="text-sm">
+                        Now that you can reliably find the rank (<i>r</i>) of a dimensional matrix, you can apply the Buckingham-Pi theorem accurately! <br/><br/>
+                        Remember: <strong><i>k</i> variables - <i>r</i> rank = Number of dimensionless &Pi; terms.</strong>
+                    </p>
+                </div>
+
+                <button onclick="restartGame()" class="mx-auto bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 px-8 rounded-xl flex items-center justify-center gap-2 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    Play Again
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // --- Game Data ---
+        const gameQuestions = [
+            {
+                type: '3x3',
+                title: "Problem 1: Kinematic Variables",
+                context: "Dimensional matrix for Time (T), Length (L), and Mass (M) across 3 kinematic variables.",
+                matrix: [
+                    [2, 0, 1],
+                    [0, 3, 0],
+                    [1, 0, 2]
+                ],
+                correctRank: 3,
+                explanation: "The determinant of this 3x3 matrix is 2(6 - 0) - 0 + 1(0 - 3) = 12 - 3 = 9. Since the determinant is non-zero, the rank is 3. All three variables represent independent dimensions."
+            },
+            {
+                type: '3x3',
+                title: "Problem 2: Redundant Dimensions",
+                context: "Sometimes, columns in a dimensional matrix are linearly dependent. Let's see what happens here.",
+                matrix: [
+                    [1, 1, 1],
+                    [2, 2, 2],
+                    [0, 1, 0]
+                ],
+                correctRank: 2,
+                explanation: "Row 2 is exactly twice Row 1, making them linearly dependent. The 3x3 determinant is 0. However, checking the 2x2 minor in the bottom right: [2, 2; 1, 0] gives det = 2(0) - 2(1) = -2 (non-zero). Thus, the rank is 2."
+            },
+            {
+                type: '3x4',
+                title: "Problem 3: The Buckingham-Pi Setup",
+                context: "A real fluid mechanics scenario. Dimensions: M, L, T (rows). Variables: Density (&rho;), Velocity (V), Diameter (D), Viscosity (&mu;) (columns).",
+                matrix: [
+                    [1, 0, 0, 1],
+                    [-3, 1, 1, -1],
+                    [0, -1, 0, -1]
+                ],
+                correctRank: 3,
+                explanation: "For a 3x4 matrix, the maximum rank is 3. We check 3x3 submatrices. Taking the first three columns (&rho;, V, D) gives a 3x3 matrix with det = 1(0 - -1) - 0 + 0 = 1. Since we found at least one 3x3 submatrix with a non-zero determinant, the rank is 3! You would subtract 3 from your total number of variables to find your Pi terms."
+            }
+        ];
+
+        // --- State Variables ---
+        let currentStage = 'intro';
+        let walkthroughStep = 0;
+        let gameIndex = 0;
+        let score = 0;
+        let userAnswer = null;
+
+        // --- Helper functions ---
+        function renderMatrixHTML(data) {
+            let html = '<div class="flex items-center justify-center my-4 text-lg font-mono">';
+            html += '<div class="border-l-2 border-r-2 border-slate-700 rounded-lg px-2 flex flex-col gap-1 py-1 bg-slate-50 relative shadow-sm">';
+            data.forEach(row => {
+                html += '<div class="flex gap-4 px-2">';
+                row.forEach(val => {
+                    html += `<div class="w-6 text-center text-slate-800">${val}</div>`;
+                });
+                html += '</div>';
+            });
+            html += '</div></div>';
+            return html;
+        }
+
+        const iconCheck = `<svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
+        const iconX = `<svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
+
+        // --- Initialization ---
+        document.getElementById('walkthrough-matrix1').innerHTML = renderMatrixHTML([
+            [1, 2, 3],
+            [4, 5, 6],
+            [7, 8, 9]
+        ]);
+        document.getElementById('walkthrough-matrix2').innerHTML = renderMatrixHTML([
+            [1, 2],
+            [4, 5]
+        ]);
+
+        // --- Navigation Logic ---
+        function setStage(stage) {
+            currentStage = stage;
+            
+            // Hide all
+            ['intro', 'defs', 'walkthrough', 'game', 'results'].forEach(s => {
+                document.getElementById('stage-' + s).classList.add('hidden');
+            });
+            
+            // Unhide target
+            document.getElementById('stage-' + stage).classList.remove('hidden');
+
+            // Update breadcrumbs
+            ['intro', 'defs', 'walkthrough', 'game'].forEach(s => {
+                const crumb = document.getElementById('crumb-' + s);
+                if (crumb) crumb.className = (s === stage) ? 'text-blue-600 font-bold transition-colors' : 'transition-colors';
+            });
+
+            // Special initializations
+            if (stage === 'game') {
+                loadGameQuestion();
+            } else if (stage === 'results') {
+                document.getElementById('final-score').innerText = score;
+            }
+        }
+
+        function nextWalkthroughStep() {
+            walkthroughStep++;
+            if (walkthroughStep === 1) {
+                document.getElementById('walkthrough-step1').classList.remove('hidden');
+            } else if (walkthroughStep === 2) {
+                document.getElementById('walkthrough-step2').classList.remove('hidden');
+                document.getElementById('walkthrough-btn').classList.add('hidden');
+                document.getElementById('walkthrough-finish-btn').classList.remove('hidden');
+                document.getElementById('walkthrough-finish-btn').classList.add('flex');
+            }
+        }
+
+        // --- Game Logic ---
+        function loadGameQuestion() {
+            const q = gameQuestions[gameIndex];
+            userAnswer = null;
+
+            document.getElementById('game-progress').innerText = `Question ${gameIndex + 1} of ${gameQuestions.length}`;
+            document.getElementById('game-score').innerText = `Score: ${score}`;
+            document.getElementById('game-title').innerText = q.title;
+            document.getElementById('game-context').innerHTML = q.context;
+            document.getElementById('game-matrix').innerHTML = renderMatrixHTML(q.matrix);
+            
+            document.getElementById('game-explanation').classList.add('hidden');
+            document.getElementById('game-next-btn').classList.add('hidden');
+            document.getElementById('game-next-btn').classList.remove('flex');
+
+            renderGameButtons(q);
+        }
+
+        function renderGameButtons(q) {
+            const container = document.getElementById('game-buttons');
+            container.innerHTML = '';
+
+            [1, 2, 3].forEach(rank => {
+                const btn = document.createElement('button');
+                btn.innerText = `Rank ${rank}`;
+                btn.className = `py-4 rounded-xl font-bold text-lg transition-all bg-slate-100 hover:bg-blue-100 hover:text-blue-700 hover:border-blue-300 border-2 border-transparent`;
+                btn.onclick = () => handleAnswer(rank, q);
+                container.appendChild(btn);
+            });
+        }
+
+        function handleAnswer(selectedRank, q) {
+            if (userAnswer !== null) return; // Prevent multiple clicks
+            userAnswer = selectedRank;
+            
+            const isCorrect = (selectedRank === q.correctRank);
+            if (isCorrect) score++;
+            
+            // Update score display immediately
+            document.getElementById('game-score').innerText = `Score: ${score}`;
+
+            // Update buttons visually
+            const buttons = document.getElementById('game-buttons').children;
+            for (let i = 0; i < buttons.length; i++) {
+                const rank = i + 1;
+                buttons[i].onclick = null; // disable
+                buttons[i].className = 'py-4 rounded-xl font-bold text-lg transition-all border-2 ';
+                
+                if (rank === q.correctRank) {
+                    buttons[i].className += 'bg-green-500 text-white border-green-600 shadow-inner';
+                } else if (rank === userAnswer && !isCorrect) {
+                    buttons[i].className += 'bg-red-500 text-white border-red-600 shadow-inner';
+                } else {
+                    buttons[i].className += 'bg-slate-100 text-slate-400 opacity-50 border-transparent';
+                }
+            }
+
+            // Show Explanation
+            const expDiv = document.getElementById('game-explanation');
+            expDiv.className = `p-5 rounded-xl border animate-fade-in flex gap-4 ${isCorrect ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`;
+            document.getElementById('game-explanation-icon').innerHTML = isCorrect ? iconCheck : iconX;
+            document.getElementById('game-explanation-title').innerText = isCorrect ? 'Correct!' : 'Incorrect.';
+            document.getElementById('game-explanation-title').className = `font-bold text-lg mb-1 ${isCorrect ? 'text-green-800' : 'text-red-800'}`;
+            document.getElementById('game-explanation-text').innerHTML = q.explanation;
+            expDiv.classList.remove('hidden');
+
+            // Show Next Button
+            const nextBtn = document.getElementById('game-next-btn');
+            document.getElementById('game-next-text').innerText = (gameIndex < gameQuestions.length - 1) ? 'Next Question' : 'See Final Results';
+            nextBtn.classList.remove('hidden');
+            nextBtn.classList.add('flex');
+        }
+
+        function nextQuestion() {
+            if (gameIndex < gameQuestions.length - 1) {
+                gameIndex++;
+                loadGameQuestion();
+            } else {
+                setStage('results');
+            }
+        }
+
+        function restartGame() {
+            walkthroughStep = 0;
+            gameIndex = 0;
+            score = 0;
+            
+            // Reset Walkthrough visibility
+            document.getElementById('walkthrough-step1').classList.add('hidden');
+            document.getElementById('walkthrough-step2').classList.add('hidden');
+            document.getElementById('walkthrough-btn').classList.remove('hidden');
+            document.getElementById('walkthrough-finish-btn').classList.add('hidden');
+            document.getElementById('walkthrough-finish-btn').classList.remove('flex');
+
+            setStage('intro');
+        }
+
+    </script>
+</body>
+</html>

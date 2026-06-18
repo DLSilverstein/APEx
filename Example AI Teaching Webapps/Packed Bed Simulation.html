@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fluidization of a Packed Bed</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+        canvas {
+            background: linear-gradient(to bottom, #1e293b, #0f172a);
+            border-radius: 0.5rem;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
+        }
+        /* Custom Scrollbar for range inputs */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            margin-top: -6px;
+            box-shadow: 0 0 5px rgba(59, 130, 246, 0.5);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #334155;
+            border-radius: 2px;
+        }
+        input[type=range]:focus {
+            outline: none;
+        }
+        .data-card {
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid #334155;
+            backdrop-filter: blur(4px);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col p-4 md:p-8">
+
+    <!-- Header -->
+    <header class="mb-8 text-center md:text-left">
+        <h1 class="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-teal-300">
+            Packed Bed Fluidization Simulator
+        </h1>
+        <p class="text-slate-400 mt-2 max-w-3xl">
+            Explore the hydrodynamics of a packed bed of sand. Adjust the fluid and particle properties to calculate the minimum fluidization velocity (u<sub>mf</sub>) using the Ergun equation and Wen & Yu approximations.
+        </p>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1">
+        
+        <!-- Controls Panel -->
+        <div class="lg:col-span-3 space-y-6">
+            <div class="data-card p-5 rounded-xl">
+                <h2 class="text-xl font-semibold mb-4 text-white border-b border-slate-600 pb-2">Parameters</h2>
+                
+                <!-- Fluid Selection -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-slate-300 mb-1">Fluid at 25°C</label>
+                    <select id="fluidSelect" class="w-full bg-slate-800 border border-slate-600 text-white rounded-md p-2 focus:ring-2 focus:ring-blue-500 outline-none transition">
+                        <option value="water">Water</option>
+                        <option value="air">Air</option>
+                    </select>
+                </div>
+
+                <!-- Particle Diameter -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-slate-300 mb-1">Effective Sand Diameter (D<sub>p</sub>)</label>
+                    <select id="dpSelect" class="w-full bg-slate-800 border border-slate-600 text-white rounded-md p-2 focus:ring-2 focus:ring-blue-500 outline-none transition">
+                        <option value="10">10 mm</option>
+                        <option value="20">20 mm</option>
+                        <option value="40">40 mm</option>
+                    </select>
+                </div>
+
+                <!-- Sphericity -->
+                <div class="mb-4">
+                    <label class="flex justify-between text-sm font-medium text-slate-300 mb-1">
+                        <span>Sphericity (&phi;<sub>s</sub>)</span>
+                        <span id="phiDisplay" class="text-blue-400 font-mono">0.85</span>
+                    </label>
+                    <input type="range" id="phiSlider" min="0.70" max="1.00" step="0.01" value="0.85">
+                    <div class="flex justify-between text-xs text-slate-500 mt-1">
+                        <span>0.7 (Angular)</span>
+                        <span>1.0 (Perfect Sphere)</span>
+                    </div>
+                </div>
+
+                <!-- Superficial Velocity -->
+                <div class="mb-2 mt-6">
+                    <label class="flex justify-between text-sm font-medium text-slate-300 mb-1">
+                        <span>Superficial Velocity (u<sub>0</sub>)</span>
+                        <span id="u0Display" class="text-blue-400 font-mono">0.000 m/s</span>
+                    </label>
+                    <input type="range" id="u0Slider" min="0" max="0.5" step="0.001" value="0">
+                    <div class="flex justify-between text-xs text-slate-500 mt-1">
+                        <span>0 m/s</span>
+                        <span id="u0MaxDisplay">0.5 m/s</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="data-card p-5 rounded-xl">
+                <h2 class="text-lg font-semibold mb-2 text-white">Bed State</h2>
+                <div id="stateIndicator" class="text-center py-3 rounded-lg font-bold text-lg transition-colors duration-300 bg-slate-800 text-slate-400 border border-slate-600">
+                    Stationary
+                </div>
+            </div>
+        </div>
+
+        <!-- Canvas / Visualization -->
+        <div class="lg:col-span-5 flex justify-center items-center relative">
+            <div class="relative">
+                <!-- Reactor Column decoration -->
+                <div class="absolute inset-y-0 left-0 w-2 bg-gradient-to-r from-slate-600 to-transparent rounded-l-lg pointer-events-none z-10" style="margin-left: -2px;"></div>
+                <div class="absolute inset-y-0 right-0 w-2 bg-gradient-to-l from-slate-600 to-transparent rounded-r-lg pointer-events-none z-10" style="margin-right: -2px;"></div>
+                
+                <canvas id="simCanvas" width="300" height="500" class="border-2 border-slate-500"></canvas>
+                
+                <!-- Axis Labels -->
+                <div class="absolute bottom-0 -left-12 text-xs text-slate-400 -rotate-90 origin-bottom-left pb-2">Height (H)</div>
+                <div class="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs text-slate-400">Reactor Width</div>
+            </div>
+        </div>
+
+        <!-- Dashboard Panel -->
+        <div class="lg:col-span-4 space-y-4">
+            <div class="data-card p-5 rounded-xl">
+                <h2 class="text-xl font-semibold mb-4 text-white border-b border-slate-600 pb-2">Calculations</h2>
+                
+                <div class="space-y-4 text-sm">
+                    <div class="flex justify-between items-center bg-slate-800/50 p-3 rounded-lg">
+                        <span class="text-slate-300">Min. Fluidization Velocity (u<sub>mf</sub>)</span>
+                        <span id="calcUmf" class="font-mono text-emerald-400 font-bold">0.000 m/s</span>
+                    </div>
+                    
+                    <div class="flex justify-between items-center bg-slate-800/50 p-3 rounded-lg">
+                        <span class="text-slate-300">Wen & Yu Porosity (&epsilon;<sub>mf</sub>)</span>
+                        <span id="calcEpsMf" class="font-mono text-blue-300">0.000</span>
+                    </div>
+
+                    <div class="flex justify-between items-center bg-slate-800/50 p-3 rounded-lg">
+                        <span class="text-slate-300">Current Porosity (&epsilon;)</span>
+                        <span id="calcEps" class="font-mono text-amber-300">0.000</span>
+                    </div>
+
+                    <div class="flex justify-between items-center bg-slate-800/50 p-3 rounded-lg">
+                        <span class="text-slate-300">Bed Expansion (H / H<sub>mf</sub>)</span>
+                        <span id="calcHRatio" class="font-mono text-fuchsia-300">1.00</span>
+                    </div>
+
+                    <div class="flex justify-between items-center bg-slate-800/50 p-3 rounded-lg">
+                        <span class="text-slate-300">Particle Reynolds No. (Re<sub>p</sub>)</span>
+                        <span id="calcRe" class="font-mono text-indigo-300">0.0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="data-card p-5 rounded-xl text-xs text-slate-400 space-y-2">
+                <p><strong class="text-slate-200">Ergun Equation (Equated to Weight):</strong></p>
+                <p class="font-mono bg-slate-900 p-2 rounded">
+                    (&rho;<sub>p</sub> - &rho;<sub>f</sub>)g = <br>
+                    [150&mu;u<sub>0</sub>(1-&epsilon;)] / [&phi;<sub>s</sub>²D<sub>p</sub>²&epsilon;³] <br>
+                    + [1.75&rho;<sub>f</sub>u<sub>0</sub>²] / [&phi;<sub>s</sub>D<sub>p</sub>&epsilon;³]
+                </p>
+                <p class="mt-2"><strong class="text-slate-200">Wen & Yu Approximation:</strong></p>
+                <p class="font-mono bg-slate-900 p-2 rounded">
+                    1 / (&phi;<sub>s</sub>&epsilon;<sub>mf</sub>³) &approx; 14 &therefore; &epsilon;<sub>mf</sub> = (14&phi;<sub>s</sub>)<sup>-1/3</sup>
+                </p>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Physical Constants
+        const g = 9.81; // m/s^2
+        const rho_p = 2650; // kg/m^3 (Sand)
+        
+        const fluids = {
+            water: { rho: 997, mu: 8.9e-4, color: '#3b82f6', bubbleCount: 40 }, // kg/m^3, Pa.s
+            air: { rho: 1.18, mu: 1.85e-5, color: '#e2e8f0', bubbleCount: 100 }
+        };
+
+        // DOM Elements
+        const fluidSelect = document.getElementById('fluidSelect');
+        const dpSelect = document.getElementById('dpSelect');
+        const phiSlider = document.getElementById('phiSlider');
+        const u0Slider = document.getElementById('u0Slider');
+        
+        const phiDisplay = document.getElementById('phiDisplay');
+        const u0Display = document.getElementById('u0Display');
+        const u0MaxDisplay = document.getElementById('u0MaxDisplay');
+        const stateIndicator = document.getElementById('stateIndicator');
+        
+        const calcUmf = document.getElementById('calcUmf');
+        const calcEpsMf = document.getElementById('calcEpsMf');
+        const calcEps = document.getElementById('calcEps');
+        const calcHRatio = document.getElementById('calcHRatio');
+        const calcRe = document.getElementById('calcRe');
+        
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // State variables
+        let params = {
+            fluid: 'water',
+            Dp: 0.01, // meters
+            phi: 0.85,
+            u0: 0.0
+        };
+
+        let results = {
+            u_mf: 0,
+            eps_mf: 0,
+            eps: 0,
+            h_ratio: 1,
+            Re: 0,
+            isFluidized: false
+        };
+
+        // Simulation Data
+        const H_mf_pixel = 200; // Base height of bed in pixels
+        const W_pixel = canvas.width;
+        let particles = [];
+        let fluidLines = [];
+
+        function calculatePhysics() {
+            let rho_f = fluids[params.fluid].rho;
+            let mu_f = fluids[params.fluid].mu;
+            
+            // 1. Wen and Yu approximation for porosity at minimum fluidization
+            results.eps_mf = Math.pow(1 / (14 * params.phi), 1/3);
+
+            // 2. Calculate u_mf by equating Ergun eq to buoyant weight
+            // A * u^2 + B * u + C = 0
+            let A = (1.75 * rho_f) / (params.phi * params.Dp * Math.pow(results.eps_mf, 3));
+            let B = (150 * mu_f * (1 - results.eps_mf)) / (Math.pow(params.phi, 2) * Math.pow(params.Dp, 2) * Math.pow(results.eps_mf, 3));
+            let C = -(rho_p - rho_f) * g;
+
+            results.u_mf = (-B + Math.sqrt(B * B - 4 * A * C)) / (2 * A);
+
+            // 3. Determine current state based on u0
+            results.isFluidized = params.u0 > results.u_mf;
+
+            if (!results.isFluidized || params.u0 === 0) {
+                results.eps = results.eps_mf;
+                results.h_ratio = 1.0;
+            } else {
+                // If fluidized, solve for new porosity eps using Newton-Raphson
+                // K * eps^3 + C1 * eps - (C1 + C2) = 0
+                let K = (rho_p - rho_f) * g;
+                let C1 = (150 * mu_f * params.u0) / (Math.pow(params.phi, 2) * Math.pow(params.Dp, 2));
+                let C2 = (1.75 * rho_f * Math.pow(params.u0, 2)) / (params.phi * params.Dp);
+                
+                let eps = results.eps_mf;
+                for(let i=0; i<20; i++) {
+                    let f = K * Math.pow(eps, 3) + C1 * eps - (C1 + C2);
+                    let df = 3 * K * Math.pow(eps, 2) + C1;
+                    eps = eps - f / df;
+                }
+                
+                // Cap porosity to realistic bounds
+                results.eps = Math.max(results.eps_mf, Math.min(eps, 0.95));
+                results.h_ratio = (1 - results.eps_mf) / (1 - results.eps);
+            }
+
+            // 4. Calculate Particle Reynolds Number
+            results.Re = (rho_f * params.u0 * params.Dp) / mu_f;
+            
+            updateDashboard();
+        }
+
+        function updateDashboard() {
+            calcUmf.innerHTML = results.u_mf.toFixed(4) + " m/s";
+            calcEpsMf.innerHTML = results.eps_mf.toFixed(3);
+            calcEps.innerHTML = results.eps.toFixed(3);
+            calcHRatio.innerHTML = results.h_ratio.toFixed(2);
+            calcRe.innerHTML = results.Re.toFixed(1);
+
+            if (results.isFluidized) {
+                stateIndicator.className = "text-center py-3 rounded-lg font-bold text-lg transition-colors duration-300 bg-emerald-900/50 text-emerald-400 border border-emerald-700 shadow-[0_0_15px_rgba(16,185,129,0.2)]";
+                stateIndicator.innerHTML = "Fluidized Bed";
+            } else {
+                stateIndicator.className = "text-center py-3 rounded-lg font-bold text-lg transition-colors duration-300 bg-slate-800 text-slate-400 border border-slate-600";
+                stateIndicator.innerHTML = "Fixed Bed (Stationary)";
+            }
+        }
+
+        function initParticles() {
+            particles = [];
+            // Map Dp to pixel radius for visual representation. 
+            // Exaggerated slightly to ensure they fit in canvas nicely.
+            let pixelRadiusMap = { "0.01": 5, "0.02": 10, "0.04": 20 };
+            let r = pixelRadiusMap[params.Dp.toString()] || 10;
+            
+            let cols = Math.floor(W_pixel / (r * 2));
+            // Calculate how many rows to reach H_mf_pixel
+            let rowSpacing = r * 1.732; // Hexagonal vertical spacing
+            let rows = Math.floor(H_mf_pixel / rowSpacing);
+            
+            for(let i=0; i<rows; i++) {
+                for(let j=0; j<cols; j++) {
+                    let x = (j * 2 * r) + r + (i % 2 === 0 ? 0 : r);
+                    if (x > W_pixel - r) continue;
+                    let y = canvas.height - r - (i * rowSpacing);
+                    
+                    particles.push({
+                        baseX: x, 
+                        baseY: y,
+                        x: x, 
+                        y: y,
+                        radius: r,
+                        phaseX: Math.random() * Math.PI * 2,
+                        phaseY: Math.random() * Math.PI * 2,
+                        speedFactor: 0.5 + Math.random() * 0.5,
+                        color: `hsl(${35 + Math.random()*15}, ${70 + Math.random()*30}%, ${40 + Math.random()*20}%)`
+                    });
+                }
+            }
+        }
+
+        function initFluidVisuals() {
+            fluidLines = [];
+            let count = fluids[params.fluid].bubbleCount;
+            for(let i=0; i<count; i++) {
+                fluidLines.push({
+                    x: Math.random() * W_pixel,
+                    y: Math.random() * canvas.height,
+                    length: Math.random() * 15 + 5,
+                    speed: Math.random() * 0.5 + 0.5
+                });
+            }
+        }
+
+        function updateSliderBounds() {
+            // Recalculate umf briefly to set max slider sensibly
+            let tempParams = { ...params };
+            params.phi = 0.7; // use lowest phi to get highest typical umf for boundary
+            calculatePhysics(); 
+            let maxUmf = results.u_mf;
+            
+            params.phi = tempParams.phi; // restore
+            calculatePhysics();
+            
+            let maxSlider = (maxUmf * 2.4).toFixed(3);
+            if (maxSlider < 0.05) maxSlider = 0.05;
+            
+            u0Slider.max = maxSlider;
+            u0MaxDisplay.innerHTML = maxSlider + " m/s";
+            
+            // Adjust current value if it exceeds new max
+            if (params.u0 > maxSlider) {
+                params.u0 = parseFloat(maxSlider);
+                u0Slider.value = params.u0;
+                u0Display.innerHTML = params.u0.toFixed(3) + " m/s";
+                calculatePhysics();
+            }
+        }
+
+        // Render Loop
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            let time = performance.now() / 1000;
+
+            // 1. Draw Fluid Flow
+            if (params.u0 > 0) {
+                ctx.strokeStyle = fluids[params.fluid].color;
+                ctx.lineWidth = params.fluid === 'water' ? 2 : 1.5;
+                ctx.globalAlpha = Math.min(0.8, params.u0 / results.u_mf * 0.5);
+                
+                let baseFlowSpeed = params.u0 * (params.fluid === 'water' ? 200 : 20);
+
+                fluidLines.forEach(fl => {
+                    fl.y -= fl.speed * baseFlowSpeed * 0.016; // Approx 60fps
+                    if (fl.y < -fl.length) {
+                        fl.y = canvas.height + fl.length;
+                        fl.x = Math.random() * W_pixel;
+                    }
+                    
+                    ctx.beginPath();
+                    if(params.fluid === 'air') {
+                        // Draw small bubbles for air
+                        ctx.arc(fl.x, fl.y, 1.5, 0, Math.PI*2);
+                        ctx.fillStyle = ctx.strokeStyle;
+                        ctx.fill();
+                    } else {
+                        // Draw streaks for water
+                        ctx.moveTo(fl.x, fl.y);
+                        ctx.lineTo(fl.x, fl.y + fl.length);
+                        ctx.stroke();
+                    }
+                });
+                ctx.globalAlpha = 1.0;
+            }
+
+            // 2. Update and Draw Particles
+            let intensity = 0;
+            if (results.isFluidized) {
+                intensity = Math.min((params.u0 - results.u_mf) / results.u_mf, 4.0);
+            }
+
+            particles.forEach(p => {
+                // Calculate expanded target Y based on H_ratio
+                // Bed expands from the bottom up.
+                let distFromBottom = canvas.height - p.baseY;
+                let targetY = canvas.height - (distFromBottom * results.h_ratio);
+
+                if (results.isFluidized) {
+                    // Procedural Jitter for fluidization
+                    let jx = Math.sin(time * 8 * p.speedFactor + p.phaseX) * p.radius * intensity * 0.6;
+                    let jy = Math.cos(time * 9 * p.speedFactor + p.phaseY) * p.radius * intensity * 0.6;
+                    
+                    // Smoothly interpolate to jittered position
+                    p.x += (p.baseX + jx - p.x) * 0.1;
+                    p.y += (targetY + jy - p.y) * 0.1;
+
+                    // Small chance to swap base positions to simulate bed mixing
+                    if (Math.random() < 0.005 * intensity) {
+                        let other = particles[Math.floor(Math.random() * particles.length)];
+                        let tempX = p.baseX; let tempY = p.baseY;
+                        p.baseX = other.baseX; p.baseY = other.baseY;
+                        other.baseX = tempX; other.baseY = tempY;
+                    }
+
+                } else {
+                    // Settle back to base position smoothly
+                    p.x += (p.baseX - p.x) * 0.1;
+                    p.y += (targetY - p.y) * 0.1;
+                }
+
+                // Draw Particle (Sand grain)
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius * 0.9, 0, Math.PI * 2);
+                ctx.fillStyle = p.color;
+                ctx.fill();
+                
+                // Add a little highlight for 3D effect
+                ctx.beginPath();
+                ctx.arc(p.x - p.radius*0.3, p.y - p.radius*0.3, p.radius * 0.2, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255,255,255,0.2)';
+                ctx.fill();
+            });
+
+            // 3. Draw Bed Height Indicator
+            let currentBedHeightPx = H_mf_pixel * results.h_ratio;
+            let topY = canvas.height - currentBedHeightPx;
+            
+            ctx.beginPath();
+            ctx.setLineDash([5, 5]);
+            ctx.moveTo(0, topY);
+            ctx.lineTo(W_pixel, topY);
+            ctx.strokeStyle = '#ef4444'; // Red dashed line
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Label
+            ctx.fillStyle = '#ef4444';
+            ctx.font = '12px Inter';
+            ctx.fillText('Bed Surface', 5, topY - 5);
+
+            requestAnimationFrame(draw);
+        }
+
+        // Event Listeners
+        fluidSelect.addEventListener('change', (e) => {
+            params.fluid = e.target.value;
+            initFluidVisuals();
+            updateSliderBounds();
+            calculatePhysics();
+        });
+
+        dpSelect.addEventListener('change', (e) => {
+            params.Dp = parseFloat(e.target.value) / 1000;
+            initParticles();
+            updateSliderBounds();
+            calculatePhysics();
+        });
+
+        phiSlider.addEventListener('input', (e) => {
+            params.phi = parseFloat(e.target.value);
+            phiDisplay.innerHTML = params.phi.toFixed(2);
+            calculatePhysics();
+        });
+
+        u0Slider.addEventListener('input', (e) => {
+            params.u0 = parseFloat(e.target.value);
+            u0Display.innerHTML = params.u0.toFixed(3) + " m/s";
+            calculatePhysics();
+        });
+
+        // Initialization
+        initFluidVisuals();
+        initParticles();
+        updateSliderBounds();
+        calculatePhysics();
+        draw();
+
+    </script>
+</body>
+</html>

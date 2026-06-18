@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fluid Dynamics NS Simplifier</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .animate-fadeIn { animation: fadeIn 0.5s ease-out; }
+        
+        @keyframes slideUp { 
+            from { opacity: 0; transform: translateY(20px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+        .animate-slideUp { animation: slideUp 0.5s ease-out; }
+        
+        @keyframes bounce-short {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-25%); }
+        }
+        .animate-bounce-short { animation: bounce-short 1s ease-in-out infinite; }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans text-slate-800 min-h-screen flex flex-col">
+
+    <div id="app" class="w-full flex-grow flex items-center justify-center p-4 sm:p-6 lg:p-8"></div>
+
+    <script>
+        // --- SVG Icons ---
+        const icons = {
+            bookOpen: `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-4 opacity-90"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>`,
+            rotateCcw: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>`,
+            checkCircle2: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>`,
+            info: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-600"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`,
+            arrowRight: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`,
+            alertCircle: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-0.5 shrink-0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+            xCircle: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-0.5 shrink-0"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`
+        };
+
+        // --- Math Formatting Helpers ---
+        function mathText(content) {
+            return `<span class="font-serif italic text-lg tracking-wide whitespace-nowrap" style="font-family: 'Times New Roman', Times, serif;">${content}</span>`;
+        }
+
+        function fraction(num, den) {
+            return `<div class="inline-flex flex-col items-center justify-center align-middle mx-1 font-serif italic text-lg" style="font-family: 'Times New Roman', Times, serif;">
+                        <span class="border-b border-slate-800 pb-[1px] px-1 leading-none">${num}</span>
+                        <span class="pt-[1px] px-1 leading-none">${den}</span>
+                    </div>`;
+        }
+
+        // --- Problem Configurations ---
+        const cartesianConfig = {
+            title: "Vertical Poiseuille Flow (Cartesian)",
+            description: "You are analyzing steady, incompressible fluid flow (like water) driven by a pump vertically upwards through a wide microfluidic channel. The channel is modeled as two infinite parallel stationary vertical plates located at x = 0 and x = h. The fluid flows purely in the positive y-direction (upwards). Gravity points downwards (negative y-direction).",
+            continuity: [
+                { id: 't1', type: 'term', element: fraction('&#8706;U<sub>x</sub>', '&#8706;x'), isZero: true, reason: "The flow is purely in the y-direction, so Ux = 0 everywhere." },
+                { id: 'p1', type: 'static', element: ' + ' },
+                { id: 't2', type: 'term', element: fraction('&#8706;U<sub>y</sub>', '&#8706;y'), isZero: false, reason: "We don't know this yet! Wait for the other terms." },
+                { id: 'p2', type: 'static', element: ' + ' },
+                { id: 't3', type: 'term', element: fraction('&#8706;U<sub>z</sub>', '&#8706;z'), isZero: true, reason: "The flow is purely in the y-direction, so Uz = 0 everywhere." },
+                { id: 'eq', type: 'static', element: ' = 0' }
+            ],
+            continuityConclusion: "Since the x and z derivatives are zero, the continuity equation tells us that ∂Uy/∂y = 0. The flow is 'fully developed', meaning the velocity profile does not change as you move up the channel.",
+            nsText: "y-momentum Navier-Stokes Equation",
+            ns: [
+                { id: 's1', type: 'static', element: '&rho;(' },
+                { id: 'trans', type: 'term', element: fraction('&#8706;U<sub>y</sub>', '&#8706;t'), isZero: true, reason: "The problem states the flow is STEADY, meaning nothing changes with time." },
+                { id: 's2', type: 'static', element: ' + ' },
+                { id: 'convX', type: 'term', element: `U<sub>x</sub>${fraction('&#8706;U<sub>y</sub>', '&#8706;x')}`, isZero: true, reason: "Unidirectional flow means Ux = 0." },
+                { id: 's3', type: 'static', element: ' + ' },
+                { id: 'convY', type: 'term', element: `U<sub>y</sub>${fraction('&#8706;U<sub>y</sub>', '&#8706;y')}`, isZero: true, reason: "From the continuity equation, we found ∂Uy/∂y = 0 (fully developed flow)!" },
+                { id: 's4', type: 'static', element: ' + ' },
+                { id: 'convZ', type: 'term', element: `U<sub>z</sub>${fraction('&#8706;U<sub>y</sub>', '&#8706;z')}`, isZero: true, reason: "Unidirectional flow means Uz = 0." },
+                { id: 's5', type: 'static', element: ') = ' },
+                { id: 'press', type: 'term', element: `-${fraction('&#8706;P', '&#8706;y')}`, isZero: false, reason: "This is the driving force! The pump creates a pressure gradient to push the fluid." },
+                { id: 's6', type: 'static', element: ' + ' },
+                { id: 'grav', type: 'term', element: '&rho;g<sub>y</sub>', isZero: false, reason: "Gravity acts in the negative y-direction (downwards), opposing the upward flow. This term is NOT zero and must be overcome by the pump's pressure!" },
+                { id: 's7', type: 'static', element: ' + &mu;(' },
+                { id: 'viscX', type: 'term', element: fraction('&#8706;&sup2;U<sub>y</sub>', '&#8706;x&sup2;'), isZero: false, reason: "This is the viscous shear stress transferring momentum between fluid layers across the channel width. It balances the pressure!" },
+                { id: 's8', type: 'static', element: ' + ' },
+                { id: 'viscY', type: 'term', element: fraction('&#8706;&sup2;U<sub>y</sub>', '&#8706;y&sup2;'), isZero: true, reason: "Since ∂Uy/∂y = 0 everywhere, its second derivative is also 0." },
+                { id: 's9', type: 'static', element: ' + ' },
+                { id: 'viscZ', type: 'term', element: fraction('&#8706;&sup2;U<sub>y</sub>', '&#8706;z&sup2;'), isZero: true, reason: "The plates are infinitely wide in the z-direction, so the velocity profile doesn't change with z." },
+                { id: 's10', type: 'static', element: ')' }
+            ],
+            bcPreText: "We are left with: ",
+            bcEquation: "0 = -∂P/∂y + ρg<sub>y</sub> + μ(∂²U<sub>y</sub>/∂x²)",
+            bcPostText: "To solve this second-order differential equation, we need boundary conditions at the plates (x = 0 and x = h). Which of these are correct?",
+            bcOptions: [
+                { id: 'a', text: "U<sub>y</sub> = 0 at y = 0, and U<sub>y</sub> = 0 at y = L", correct: false, feedback: "Boundary conditions apply to the boundaries in the x-direction (the plates), not the entry/exit points." },
+                { id: 'b', text: "U<sub>y</sub> = 0 at x = 0, and U<sub>y</sub> = 0 at x = h", correct: true, feedback: "Correct! This is the No-Slip condition. Viscous fluids stick to solid boundaries." },
+                { id: 'c', text: "∂U<sub>y</sub>/∂x = 0 at x = 0, and ∂U<sub>y</sub>/∂x = 0 at x = h", correct: false, feedback: "This would mean there is no shear stress at the walls (a slip boundary), which is incorrect for a standard fluid on a solid plate." }
+            ],
+            solutionSteps: [
+                `Rearrange: ${fraction('d&sup2;U<sub>y</sub>', 'dx&sup2;')} = ${fraction('1', '&mu;')} (${fraction('dP', 'dy')} - &rho;g<sub>y</sub>)`,
+                `Integrate once: ${fraction('dU<sub>y</sub>', 'dx')} = ${fraction('1', '&mu;')} (${fraction('dP', 'dy')} - &rho;g<sub>y</sub>) x + C<sub>1</sub>`,
+                `Integrate twice: U<sub>y</sub>(x) = ${fraction('1', '2&mu;')} (${fraction('dP', 'dy')} - &rho;g<sub>y</sub>) x&sup2; + C<sub>1</sub>x + C<sub>2</sub>`,
+                `Apply U<sub>y</sub>(0) = 0 &rArr; <b>C<sub>2</sub> = 0</b>`,
+                `Apply U<sub>y</sub>(h) = 0 &rArr; 0 = ${fraction('1', '2&mu;')} (${fraction('dP', 'dy')} - &rho;g<sub>y</sub>) h&sup2; + C<sub>1</sub>h &rArr; <b>C<sub>1</sub> = -${fraction('1', '2&mu;')} (${fraction('dP', 'dy')} - &rho;g<sub>y</sub>) h</b>`,
+                `<span class="text-blue-700 font-bold">Final Profile: U<sub>y</sub>(x) = ${fraction('1', '2&mu;')} (${fraction('dP', 'dy')} - &rho;g<sub>y</sub>) (x&sup2; - hx)</span>`
+            ]
+        };
+
+        const cylindricalConfig = {
+            title: "Hagen-Poiseuille Pipe Flow (Cylindrical)",
+            description: "You are analyzing steady, incompressible fluid flow driven by a pump through a long, straight, horizontal cylindrical pipe of radius R. The fluid flows purely in the axial (z) direction. The flow is axisymmetric (symmetric around the centerline).",
+            continuity: [
+                { id: 't1', type: 'term', element: `${fraction('1', 'r')}${fraction('&#8706;(rU<sub>r</sub>)', '&#8706;r')}`, isZero: true, reason: "The fluid flows purely axially. It does not flow radially outwards or inwards, so Ur = 0." },
+                { id: 'p1', type: 'static', element: ' + ' },
+                { id: 't2', type: 'term', element: `${fraction('1', 'r')}${fraction('&#8706;U<sub>&theta;</sub>', '&#8706;&theta;')}`, isZero: true, reason: "The fluid is not swirling around the pipe, so Uθ = 0." },
+                { id: 'p2', type: 'static', element: ' + ' },
+                { id: 't3', type: 'term', element: fraction('&#8706;U<sub>z</sub>', '&#8706;z'), isZero: false, reason: "We don't know this yet! Wait for the other terms." },
+                { id: 'eq', type: 'static', element: ' = 0' }
+            ],
+            continuityConclusion: "Since the r and θ derivatives are zero, the continuity equation tells us that ∂Uz/∂z = 0. The flow is 'fully developed', meaning the velocity profile does not change as you move down the length of the pipe.",
+            nsText: "z-momentum Navier-Stokes Equation",
+            ns: [
+                { id: 's1', type: 'static', element: '&rho;(' },
+                { id: 'trans', type: 'term', element: fraction('&#8706;U<sub>z</sub>', '&#8706;t'), isZero: true, reason: "The problem states the flow is STEADY, meaning nothing changes with time." },
+                { id: 's2', type: 'static', element: ' + ' },
+                { id: 'convR', type: 'term', element: `U<sub>r</sub>${fraction('&#8706;U<sub>z</sub>', '&#8706;r')}`, isZero: true, reason: "Unidirectional flow means Ur = 0." },
+                { id: 's3', type: 'static', element: ' + ' },
+                { id: 'convT', type: 'term', element: `${fraction('U<sub>&theta;</sub>', 'r')}${fraction('&#8706;U<sub>z</sub>', '&#8706;&theta;')}`, isZero: true, reason: "No swirling flow, so Uθ = 0." },
+                { id: 's4', type: 'static', element: ' + ' },
+                { id: 'convZ', type: 'term', element: `U<sub>z</sub>${fraction('&#8706;U<sub>z</sub>', '&#8706;z')}`, isZero: true, reason: "From the continuity equation, we found ∂Uz/∂z = 0 (fully developed flow)!" },
+                { id: 's5', type: 'static', element: ') = ' },
+                { id: 'press', type: 'term', element: `-${fraction('&#8706;P', '&#8706;z')}`, isZero: false, reason: "This is the driving force! The pump creates a pressure gradient to push the fluid down the pipe." },
+                { id: 's6', type: 'static', element: ' + ' },
+                { id: 'grav', type: 'term', element: '&rho;g<sub>z</sub>', isZero: true, reason: "The pipe is horizontal. Gravity acts downwards, so its component in the axial z-direction is 0." },
+                { id: 's7', type: 'static', element: ' + &mu;[' },
+                { id: 'viscR', type: 'term', element: `${fraction('1', 'r')}${fraction('&#8706;', '&#8706;r')}(r${fraction('&#8706;U<sub>z</sub>', '&#8706;r')})`, isZero: false, reason: "This is the viscous shear stress transferring momentum radially across the pipe. It balances the pressure!" },
+                { id: 's8', type: 'static', element: ' + ' },
+                { id: 'viscT', type: 'term', element: `${fraction('1', 'r&sup2;')}${fraction('&#8706;&sup2;U<sub>z</sub>', '&#8706;&theta;&sup2;')}`, isZero: true, reason: "The flow is axisymmetric, so the velocity does not change with the angle θ." },
+                { id: 's9', type: 'static', element: ' + ' },
+                { id: 'viscZ', type: 'term', element: fraction('&#8706;&sup2;U<sub>z</sub>', '&#8706;z&sup2;'), isZero: true, reason: "Since ∂Uz/∂z = 0 everywhere, its second derivative is also 0." },
+                { id: 's10', type: 'static', element: ']' }
+            ],
+            bcPreText: "We are left with: ",
+            bcEquation: "0 = -∂P/∂z + (μ/r)∂/∂r(r∂Uz/∂r)",
+            bcPostText: "We need two boundary conditions to solve for the velocity profile Uz(r). Which of these are correct for a pipe of radius R?",
+            bcOptions: [
+                { id: 'a', text: "Uz(R) = 0  AND  ∂Uz/∂r = 0 at r = 0", correct: true, feedback: "Correct! The fluid sticks to the pipe wall (No-Slip at R), and the velocity profile must be symmetric at the centerline (maximum velocity, zero slope at r=0)." },
+                { id: 'b', text: "Uz(0) = 0  AND  Uz(R) = U_max", correct: false, feedback: "This is backwards. Velocity is maximum at the center (r=0) and zero at the walls (r=R)." },
+                { id: 'c', text: "∂Uz/∂r = 0 at r = R  AND  Uz(0) = 0", correct: false, feedback: "There is immense shear stress at the wall, so ∂Uz/∂r is not zero there. Also, velocity is not zero at the center." }
+            ],
+            solutionSteps: [
+                `Rearrange: ${fraction('&#8706;', '&#8706;r')}(r${fraction('&#8706;U<sub>z</sub>', '&#8706;r')}) = ${fraction('r', '&mu;')} ${fraction('dP', 'dz')}`,
+                `Integrate once: r${fraction('&#8706;U<sub>z</sub>', '&#8706;r')} = ${fraction('r&sup2;', '2&mu;')} ${fraction('dP', 'dz')} + C<sub>1</sub>`,
+                `Divide by r: ${fraction('&#8706;U<sub>z</sub>', '&#8706;r')} = ${fraction('r', '2&mu;')} ${fraction('dP', 'dz')} + ${fraction('C<sub>1</sub>', 'r')}`,
+                `Integrate twice: U<sub>z</sub>(r) = ${fraction('r&sup2;', '4&mu;')} ${fraction('dP', 'dz')} + C<sub>1</sub>ln(r) + C<sub>2</sub>`,
+                `Apply symmetry at r=0: Velocity cannot be infinite. ln(0) is undefined, so <b>C<sub>1</sub> = 0</b>`,
+                `Apply No-Slip U<sub>z</sub>(R) = 0: 0 = ${fraction('R&sup2;', '4&mu;')} ${fraction('dP', 'dz')} + C<sub>2</sub> &rArr; <b>C<sub>2</sub> = -${fraction('R&sup2;', '4&mu;')} ${fraction('dP', 'dz')}</b>`,
+                `<span class="text-blue-700 font-bold">Final Profile: U<sub>z</sub>(r) = -${fraction('1', '4&mu;')} ${fraction('dP', 'dz')} (R&sup2; - r&sup2;)</span>`
+            ]
+        };
+
+        // --- Application State ---
+        let state = {
+            mode: null,
+            step: 0,
+            crossedTerms: new Set(),
+            feedback: null,
+            selectedBc: null
+        };
+
+        // --- State Actions ---
+        function handleModeSelect(mode) {
+            state.mode = mode;
+            state.step = 0;
+            state.crossedTerms = new Set();
+            state.feedback = null;
+            state.selectedBc = null;
+            render();
+        }
+
+        function resetEquationState() {
+            state.crossedTerms = new Set();
+            state.feedback = null;
+            state.selectedBc = null;
+        }
+
+        function toggleTerm(id) {
+            if (state.feedback?.type === 'success') return; // locked after success
+            if (state.crossedTerms.has(id)) {
+                state.crossedTerms.delete(id);
+            } else {
+                state.crossedTerms.add(id);
+            }
+            state.feedback = null;
+            render();
+        }
+
+        function validateEquation(equationType) {
+            const config = state.mode === 'cartesian' ? cartesianConfig : cylindricalConfig;
+            const terms = config[equationType].filter(t => t.type === 'term');
+            const correctZeroIds = terms.filter(t => t.isZero).map(t => t.id);
+            
+            const missing = correctZeroIds.filter(id => !state.crossedTerms.has(id));
+            const extra = Array.from(state.crossedTerms).filter(id => !correctZeroIds.includes(id));
+
+            if (missing.length === 0 && extra.length === 0) {
+                state.feedback = { type: 'success', message: 'Excellent! You have successfully simplified the equation.' };
+            } else {
+                let errorMsg = "Not quite right. ";
+                if (extra.length > 0) {
+                    const firstExtra = terms.find(t => t.id === extra[0]);
+                    errorMsg += `You crossed out a term that should NOT be zero. Hint: ${firstExtra.reason}`;
+                } else {
+                    const firstMissing = terms.find(t => t.id === missing[0]);
+                    errorMsg += `You missed a term that evaluates to zero. Hint: ${firstMissing.reason}`;
+                }
+                state.feedback = { type: 'error', message: errorMsg };
+            }
+            render();
+        }
+
+        function handleBcSelect(id) {
+            const config = state.mode === 'cartesian' ? cartesianConfig : cylindricalConfig;
+            state.selectedBc = id;
+            const option = config.bcOptions.find(opt => opt.id === id);
+            
+            if (option.correct) {
+                state.feedback = { type: 'success', message: option.feedback };
+            } else {
+                state.feedback = { type: 'error', message: option.feedback };
+            }
+            render();
+        }
+
+        function nextStep() {
+            state.step++;
+            resetEquationState();
+            render();
+        }
+
+        // --- Render Views ---
+        function renderMenu() {
+            return `
+                <div class="max-w-3xl w-full bg-white rounded-2xl shadow-xl overflow-hidden">
+                    <div class="bg-blue-600 p-8 text-white text-center">
+                        ${icons.bookOpen}
+                        <h1 class="text-4xl font-bold mb-2">Navier-Stokes Simplifier</h1>
+                        <p class="text-blue-100 text-lg">Master the art of crossing out terms in fluid dynamics.</p>
+                    </div>
+                    <div class="p-8">
+                        <h2 class="text-2xl font-semibold text-center mb-6">Choose Your Coordinate System</h2>
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <button onclick="handleModeSelect('cartesian')" class="group flex flex-col items-center p-6 border-2 border-slate-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all text-left">
+                                <div class="w-full h-32 bg-slate-100 rounded-lg mb-4 relative overflow-hidden flex flex-row items-center justify-center border border-slate-300">
+                                    <div class="w-2 h-full bg-slate-800 absolute left-12"></div>
+                                    <div class="flex flex-row items-center gap-3">
+                                        <div class="w-1 h-12 bg-blue-400 rounded"></div>
+                                        <div class="w-1.5 h-20 bg-blue-500 rounded"></div>
+                                        <div class="w-1 h-12 bg-blue-400 rounded"></div>
+                                    </div>
+                                    <div class="w-2 h-full bg-slate-800 absolute right-12"></div>
+                                </div>
+                                <h3 class="text-xl font-bold mb-2 text-slate-800 group-hover:text-blue-700">Vertical Poiseuille Flow</h3>
+                                <p class="text-slate-600 text-sm">Cartesian Coordinates (x, y, z). Vertical upward flow between infinite parallel plates.</p>
+                            </button>
+
+                            <button onclick="handleModeSelect('cylindrical')" class="group flex flex-col items-center p-6 border-2 border-slate-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all text-left">
+                                <div class="w-full h-32 bg-slate-100 rounded-lg mb-4 relative overflow-hidden flex items-center justify-center border border-slate-300">
+                                    <div class="w-4/5 h-20 border-t-4 border-b-4 border-slate-800 rounded-[50%] absolute border-opacity-30"></div>
+                                    <div class="flex flex-col items-center gap-2 w-full px-4">
+                                        <div class="w-2/4 h-1 bg-blue-400 rounded ml-4"></div>
+                                        <div class="w-3/4 h-1 bg-blue-500 rounded ml-8"></div>
+                                        <div class="w-full h-1 bg-blue-600 rounded"></div>
+                                        <div class="w-3/4 h-1 bg-blue-500 rounded ml-8"></div>
+                                        <div class="w-2/4 h-1 bg-blue-400 rounded ml-4"></div>
+                                    </div>
+                                </div>
+                                <h3 class="text-xl font-bold mb-2 text-slate-800 group-hover:text-blue-700">Pipe Flow</h3>
+                                <p class="text-slate-600 text-sm">Cylindrical Coordinates (r, &theta;, z). Flow through a straight pipe.</p>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderProgressBar() {
+            const labels = ['Scenario', 'Continuity', 'Navier-Stokes', 'Boundary Cond.', 'Solution'];
+            let html = `
+                <div class="max-w-4xl w-full mb-8 flex justify-between items-center relative mx-auto">
+                    <div class="absolute left-0 right-0 top-1/2 h-1 bg-slate-200 -z-10 rounded-full"></div>
+                    <div class="absolute left-0 top-1/2 h-1 bg-blue-600 -z-10 rounded-full transition-all duration-500" style="width: ${(state.step / 4) * 100}%"></div>
+            `;
+            
+            labels.forEach((label, idx) => {
+                const isCompleted = state.step > idx;
+                const isCurrent = state.step === idx;
+                const circleClass = isCompleted ? 'bg-blue-600 border-blue-600 text-white' : 
+                                  isCurrent ? 'bg-white border-blue-600 text-blue-600' : 
+                                  'bg-white border-slate-300 text-slate-400';
+                
+                html += `
+                    <div class="flex flex-col items-center gap-2 bg-slate-50 relative z-0">
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm border-2 transition-colors ${circleClass}">
+                            ${isCompleted ? icons.checkCircle2 : (idx + 1)}
+                        </div>
+                        <span class="text-xs font-medium hidden sm:block absolute top-10 whitespace-nowrap ${isCurrent ? 'text-blue-700' : 'text-slate-500'}">${label}</span>
+                    </div>
+                `;
+            });
+            html += `</div><div class="mb-10 sm:mb-8"></div>`; // spacer for absolute positioned labels
+            return html;
+        }
+
+        function renderEquation(equationConfig) {
+            let html = `<div class="flex flex-wrap items-center justify-center gap-y-6 text-xl bg-white p-6 rounded-xl shadow-inner border border-slate-200 overflow-x-auto min-h-[140px]">`;
+            
+            equationConfig.forEach(item => {
+                if (item.type === 'static') {
+                    html += `<span class="mx-1 text-slate-800">${mathText(item.element)}</span>`;
+                } else {
+                    const isCrossed = state.crossedTerms.has(item.id);
+                    const isSuccess = state.feedback?.type === 'success';
+                    
+                    let btnClasses = "relative group mx-1 p-2 rounded-lg transition-all duration-200 ease-in-out cursor-pointer ";
+                    btnClasses += isCrossed ? "bg-red-50 opacity-60 scale-95 " : "hover:bg-blue-50 hover:scale-105 active:scale-95 ";
+                    if (isSuccess && !isCrossed) btnClasses += "ring-2 ring-green-400 bg-green-50 ";
+                    if (isSuccess) btnClasses += "cursor-default ";
+                    
+                    let lineClasses = "absolute top-1/2 left-0 w-full h-[3px] bg-red-600 rounded-full transform -translate-y-1/2 -rotate-12 transition-all duration-300 origin-center pointer-events-none ";
+                    lineClasses += isCrossed ? "scale-x-100 opacity-100" : "scale-x-0 opacity-0";
+                    
+                    let tooltipHtml = (!isCrossed && !isSuccess) ? 
+                        `<div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-max max-w-xs p-2 bg-slate-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">Click to cross out if equivalent to 0</div>` : "";
+                    
+                    html += `
+                        <button onclick="toggleTerm('${item.id}')" ${isSuccess ? 'disabled' : ''} class="${btnClasses}">
+                            ${mathText(item.element)}
+                            <div class="${lineClasses}"></div>
+                            ${tooltipHtml}
+                        </button>
+                    `;
+                }
+            });
+            
+            html += `</div>`;
+            return html;
+        }
+
+        function renderFeedbackBox(conclusionText) {
+            if (!state.feedback) return '';
+            
+            const isSuccess = state.feedback.type === 'success';
+            const baseClass = isSuccess ? 'bg-green-50 text-green-800 border-green-200' : 'bg-red-50 text-red-800 border-red-200';
+            const icon = isSuccess ? icons.checkCircle2 : icons.alertCircle;
+            const title = isSuccess ? (state.step === 1 ? 'Correct!' : 'Brilliant!') : 'Try Again';
+
+            let extraHtml = '';
+            if (isSuccess && conclusionText) {
+                extraHtml = `<p class="mt-3 font-medium text-green-900 border-t border-green-200 pt-3 flex items-start gap-1">
+                                <span class="mt-0.5">${icons.arrowRight}</span> ${conclusionText}
+                             </p>`;
+            }
+
+            return `
+                <div class="p-4 rounded-lg mb-6 flex items-start gap-3 border ${baseClass}">
+                    ${icon}
+                    <div>
+                        <strong class="block mb-1">${title}</strong>
+                        ${state.feedback.message}
+                        ${extraHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderMainApp() {
+            const config = state.mode === 'cartesian' ? cartesianConfig : cylindricalConfig;
+            
+            let html = `
+                <div class="max-w-4xl w-full flex justify-between items-center mb-8 mx-auto">
+                    <div>
+                        <h1 class="text-2xl font-bold text-slate-900">${config.title}</h1>
+                        <p class="text-slate-500 text-sm mt-1">Interactive Fluid Dynamics Lab</p>
+                    </div>
+                    <button onclick="handleModeSelect(null)" class="flex items-center px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors">
+                        ${icons.rotateCcw} Switch Problem
+                    </button>
+                </div>
+                ${renderProgressBar()}
+                <div class="max-w-4xl w-full bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden mb-8 mx-auto">
+            `;
+
+            if (state.step === 0) {
+                html += `
+                    <div class="p-8 animate-fadeIn">
+                        <h2 class="text-2xl font-bold mb-4 flex items-center gap-2 text-blue-800">
+                            ${icons.info} The Physical Setup
+                        </h2>
+                        <p class="text-lg leading-relaxed text-slate-700 bg-blue-50 p-6 rounded-xl border border-blue-100 shadow-sm">
+                            ${config.description}
+                        </p>
+                        <div class="mt-8 flex justify-end">
+                            <button onclick="nextStep()" class="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-transform hover:scale-105 font-semibold shadow-md">
+                                Begin Analysis ${icons.arrowRight}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else if (state.step === 1) {
+                html += `
+                    <div class="p-8 animate-fadeIn">
+                        <h2 class="text-2xl font-bold mb-2">Step 1: The Continuity Equation</h2>
+                        <p class="text-slate-600 mb-8">
+                            Conservation of mass for an incompressible fluid. <strong>Click on the terms that evaluate to zero</strong> based on our physical description.
+                        </p>
+                        ${renderEquation(config.continuity)}
+                        <div class="mt-8">
+                            ${renderFeedbackBox(config.continuityConclusion)}
+                            <div class="flex justify-between items-center flex-wrap gap-4">
+                                <button onclick="validateEquation('continuity')" ${state.feedback?.type === 'success' ? 'disabled' : ''} class="px-6 py-3 rounded-xl font-semibold transition-all shadow-sm ${state.feedback?.type === 'success' ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-slate-800 text-white hover:bg-slate-900 active:scale-95'}">
+                                    Check Answers
+                                </button>
+                                ${state.feedback?.type === 'success' ? `
+                                    <button onclick="nextStep()" class="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-transform hover:scale-105 font-semibold shadow-md animate-bounce-short">
+                                        Next: Navier-Stokes ${icons.arrowRight}
+                                    </button>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (state.step === 2) {
+                html += `
+                    <div class="p-8 animate-fadeIn">
+                        <h2 class="text-2xl font-bold mb-2">Step 2: The ${config.nsText}</h2>
+                        <p class="text-slate-600 mb-8">
+                            Now apply what we know to conservation of momentum. Cross out all terms that equate to zero. 
+                            <br/><span class="text-sm text-blue-600 font-medium">Remember your findings from the continuity equation!</span>
+                        </p>
+                        ${renderEquation(config.ns)}
+                        <div class="mt-8">
+                            ${renderFeedbackBox()}
+                            <div class="flex justify-between items-center flex-wrap gap-4">
+                                <button onclick="validateEquation('ns')" ${state.feedback?.type === 'success' ? 'disabled' : ''} class="px-6 py-3 rounded-xl font-semibold transition-all shadow-sm ${state.feedback?.type === 'success' ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-slate-800 text-white hover:bg-slate-900 active:scale-95'}">
+                                    Check Answers
+                                </button>
+                                ${state.feedback?.type === 'success' ? `
+                                    <button onclick="nextStep()" class="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-transform hover:scale-105 font-semibold shadow-md animate-bounce-short">
+                                        Next: Boundary Conditions ${icons.arrowRight}
+                                    </button>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (state.step === 3) {
+                let optionsHtml = config.bcOptions.map(opt => {
+                    const isSelected = state.selectedBc === opt.id;
+                    let btnClass = isSelected ? (opt.correct ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50') : 'border-slate-200 bg-white hover:border-blue-400 hover:bg-blue-50';
+                    return `
+                        <button onclick="handleBcSelect('${opt.id}')" class="p-5 rounded-xl border-2 text-left transition-all ${btnClass}">
+                            ${mathText(opt.text)}
+                        </button>
+                    `;
+                }).join('');
+
+                let feedbackHtml = '';
+                if (state.feedback) {
+                    const isSuccess = state.feedback.type === 'success';
+                    feedbackHtml = `
+                        <div class="mt-6 p-4 rounded-lg flex items-start gap-3 ${isSuccess ? 'bg-green-100 text-green-900' : 'bg-red-100 text-red-900'}">
+                            ${isSuccess ? icons.checkCircle2 : icons.xCircle}
+                            <p>${state.feedback.message}</p>
+                        </div>
+                    `;
+                }
+
+                html += `
+                    <div class="p-8 animate-fadeIn">
+                        <h2 class="text-2xl font-bold mb-4">Step 3: Boundary Conditions</h2>
+                        <div class="bg-slate-100 p-6 rounded-xl border border-slate-200 mb-6 font-serif italic text-xl text-center shadow-inner">
+                            ${config.bcPreText}<br/>
+                            <span class="font-bold text-blue-800">${config.bcEquation}</span>
+                        </div>
+                        <p class="text-slate-700 mb-6 font-medium">${config.bcPostText}</p>
+                        <div class="flex flex-col gap-4">
+                            ${optionsHtml}
+                        </div>
+                        ${feedbackHtml}
+                        ${state.feedback?.type === 'success' ? `
+                            <div class="mt-8 flex justify-end">
+                                <button onclick="nextStep()" class="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-transform hover:scale-105 font-semibold shadow-md">
+                                    View Final Solution ${icons.arrowRight}
+                                </button>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            } else if (state.step === 4) {
+                let stepsHtml = config.solutionSteps.map((stepContent, idx) => `
+                    <div class="flex flex-col md:flex-row items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-100 opacity-0 animate-slideUp" style="animation-delay: ${idx * 200}ms; animation-fill-mode: forwards;">
+                        <div class="w-8 h-8 shrink-0 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-sm">
+                            ${idx + 1}
+                        </div>
+                        <div class="text-lg text-slate-800 overflow-x-auto w-full text-center md:text-left">
+                            ${stepContent}
+                        </div>
+                    </div>
+                `).join('');
+
+                html += `
+                    <div class="p-8 animate-fadeIn">
+                        <div class="text-center mb-8">
+                            <h2 class="text-3xl font-bold text-slate-800 mb-2">Mathematical Solution</h2>
+                            <p class="text-slate-500">Integrating the simplified equation.</p>
+                        </div>
+                        <div class="bg-slate-50 rounded-2xl border border-slate-200 p-8 shadow-inner space-y-6">
+                            ${stepsHtml}
+                        </div>
+                        <div class="mt-12 text-center">
+                            <h3 class="text-xl font-bold text-slate-800 mb-4">Congratulations!</h3>
+                            <p class="text-slate-600 mb-8 max-w-2xl mx-auto">
+                                You have successfully reduced the complex 3D Navier-Stokes equations to a simple 1D velocity profile using physical reasoning and boundary conditions.
+                            </p>
+                            <button onclick="handleModeSelect(null)" class="inline-flex items-center gap-2 px-8 py-4 text-lg font-bold text-white bg-slate-800 rounded-full hover:bg-slate-900 transition-transform hover:scale-105 shadow-xl">
+                                ${icons.rotateCcw} Try Another Problem
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            html += `</div>`;
+            return html;
+        }
+
+        // --- Core Render Loop ---
+        function render() {
+            const app = document.getElementById('app');
+            if (!state.mode) {
+                app.innerHTML = renderMenu();
+            } else {
+                app.innerHTML = renderMainApp();
+            }
+        }
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            render();
+        });
+    </script>
+</body>
+</html>
