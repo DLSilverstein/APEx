@@ -1,170 +1,233 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chemical Engineering Resources</title>
-    <style>
-        body {
-            font-family: "Segoe UI", Tahoma, sans-serif;
-            margin: 0;
-            background: #f5f7fa;
-            color: #333;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Generated Chemical Engineering Resources</title>
 
-        header {
-            background: #00274c;
-            color: white;
-            padding: 1.5rem;
-            text-align: center;
-        }
+<style>
+body { font-family: "Segoe UI", Tahoma; margin: 0; background: #f5f7fa; }
 
-        h1 {
-            margin: 0;
-            font-size: 1.8rem;
-        }
+header {
+    background: #00274c;
+    color: white;
+    padding: 1.5rem;
+    text-align: center;
+}
 
-        .container {
-            max-width: 1000px;
-            margin: 2rem auto;
-            padding: 1rem;
-        }
+.container {
+    max-width: 1100px;
+    margin: 2rem auto;
+    padding: 1rem;
+}
 
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1rem;
-        }
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.2rem;
+}
 
-        .card {
-            background: white;
-            border-radius: 12px;
-            padding: 1rem 1.25rem;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.06);
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
+.card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.2rem;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+}
 
-        .card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 6px 14px rgba(0,0,0,0.1);
-        }
+.card h2 {
+    margin-top: 0;
+    color: #00274c;
+}
 
-        a {
-            text-decoration: none;
-            color: #00274c;
-            font-weight: 600;
-        }
+.item { margin-bottom: 0.8rem; }
 
-        .type {
-            display: block;
-            margin-top: 0.4rem;
-            font-size: 0.8rem;
-            color: #666;
-        }
+.label { font-size: 0.9rem; }
 
-        footer {
-            text-align: center;
-            padding: 1rem;
-            font-size: 0.8rem;
-            color: #888;
-        }
-    </style>
+.button {
+    display: inline-block;
+    margin-top: 4px;
+    padding: 5px 9px;
+    font-size: 0.8rem;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.sim { background: #0077cc; color: white; }
+.doc { background: #e6ecf2; color: #333; }
+</style>
 </head>
+
 <body>
 
 <header>
-    <h1>Chemical Engineering Interactive Resources</h1>
+<h1>APEx Chemical Engineering Learning Tools</h1>
 </header>
 
 <div class="container">
-    <div class="grid">
+<div class="grid">
 
-        <div class="card">
-            <a href="2D Heat Conduction Guided Inquiry.docx">2D Heat Conduction Guided Inquiry</a>
-            <span class="type">DOCX</span>
-        </div>
+<!-- Heat -->
+<div class="card">
+<h2>2D Heat Conduction</h2>
 
-        <div class="card">
-            <a href="2d_heat_distribution_simulator.html">2D Heat Distribution Simulator</a>
-            <span class="type">HTML Simulation</span>
-        </div>
-
-        <div class="card">
-            <a href="Benzene-Toluene VLE Guided Inquiry Activity.pdf">Benzene-Toluene VLE Guided Inquiry</a>
-            <span class="type">PDF</span>
-        </div>
-
-        <div class="card">
-            <a href="Benzene-Toluene Vapor-Liquid Equilibrium Simulation - Google Gemini.pdf">VLE Simulation (Guide)</a>
-            <span class="type">PDF</span>
-        </div>
-
-        <div class="card">
-            <a href="Energy Balance Blaster.html">Energy Balance Blaster</a>
-            <span class="type">Interactive Tool</span>
-        </div>
-
-        <div class="card">
-            <a href="Ethanol Process Guided Inquiry Activity.docx">Ethanol Process Guided Inquiry</a>
-            <span class="type">DOCX</span>
-        </div>
-
-        <div class="card">
-            <a href="Ethanol Process Simulator.html">Ethanol Process Simulator</a>
-            <span class="type">Simulation</span>
-        </div>
-
-        <div class="card">
-            <a href="Flowsheet Mastery Activity.html">Flowsheet Mastery Activity</a>
-            <span class="type">Interactive</span>
-        </div>
-
-        <div class="card">
-            <a href="Hunter Nash LLE Guided Inquiry Activity.pdf">Hunter-Nash LLE Guided Inquiry</a>
-            <span class="type">PDF</span>
-        </div>
-
-        <div class="card">
-            <a href="Hunter Nash LLE Simulator.html">Hunter-Nash LLE Simulator</a>
-            <span class="type">Simulation</span>
-        </div>
-
-        <div class="card">
-            <a href="Standard Volumetric Flowrates Guided Inquiry.pdf">Standard Flowrates Guided Inquiry</a>
-            <span class="type">PDF</span>
-        </div>
-
-        <div class="card">
-            <a href="Steam Table Calculator Guided Inquiry Activity.docx">Steam Table Guided Inquiry</a>
-            <span class="type">DOCX</span>
-        </div>
-
-        <div class="card">
-            <a href="Steam Table Calculator.html">Steam Table Calculator</a>
-            <span class="type">Tool</span>
-        </div>
-
-        <div class="card">
-            <a href="benzene_toluene_vle_simulation.html">Benzene-Toluene VLE Simulator</a>
-            <span class="type">Interactive</span>
-        </div>
-
-        <div class="card">
-            <a href="psychrometric_activity_guide.html">Psychrometric Activity Guide</a>
-            <span class="type">HTML Guide</span>
-        </div>
-
-        <div class="card">
-            <a href="psychrometric_chart_simulator.html">Psychrometric Chart Simulator</a>
-            <span class="type">Simulation</span>
-        </div>
-
-    </div>
+<div class="item">
+<div class="label">📄 Guided Inquiry</div>
+<a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/2D%20Heat%20Conduction%20Guided%20Inquiry.docx" class="button doc">Download Activity</a>
 </div>
 
-<footer>
-    © Chemical Engineering Learning Resources
-</footer>
+<div class="item">
+<div class="label">🧪 Simulator</div>
+<a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/2d_heat_distribution_simulator.html" class="button sim">Launch Simulator</a>
+</div>
+</div>
 
+<!-- VLE Benzene -->
+<div class="card">
+<h2>Benzene–Toluene VLE</h2>
+
+<div class="item">
+<div class="label">📄 Guided Inquiry</div>
+<a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Benzene-Toluene%20VLE%20Guided%20Inquiry%20Activity.pdf" class="button doc">Download</a>
+</div>
+
+<div class="item">
+<div class="label">📄 Simulation Guide</div>
+<a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Benzene-Toluene%20Vapor-Liquid%20Equilibrium%20Simulation%20-%20Google%20Gemini.pdf" class="button doc">Download</a>
+</div>
+
+<div class="item">
+<div class="label">🧪 Simulator</div>
+<a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/benzene_toluene_vle_simulation.html" class="button sim">Launch</a>
+</div>
+</div>
+
+<!-- VLE General -->
+<div class="card">
+<h2>VLE (General)</h2>
+
+<div class="item">
+<div class="label">📄 Guided Inquiry</div>
+<a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/VLE%20Simulation%20Guided%20Inquiry.pdf" class="button doc">Download</a>
+</div>
+
+<div class="item">
+<div class="label">🧪 Simulation</div>
+<a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/VLE%20Simulation.html" class="button sim">Launch</a>
+</div>
+</div>
+
+<!-- Txy -->
+<div class="card">
+<h2>T-x-y Diagrams</h2>
+
+<div class="item">
+<div class="label">📄 Guided Inquiry</div>
+<a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Txy%20Guided%20Inquiry.pdf" class="button doc">Download</a>
+</div>
+
+<div class="item">
+<div class="label">🧪 Interactive Plot</div>
+<a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Txy%20Interactive%20Plot.html" class="button sim">Launch</a>
+</div>
+</div>
+
+<!-- Ethanol -->
+<div class="card">
+<h2>Ethanol Process</h2>
+
+<div class="item">
+<div class="label">📄 Guided Inquiry</div>
+<a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Ethanol%20Process%20Guided%20Inquiry%20Activity.docx" class="button doc">Download</a>
+</div>
+
+<div class="item">
+<div class="label">🧪 Simulator</div>
+<a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Ethanol%20Process%20Simulator.html" class="button sim">Launch</a>
+</div>
+</div>
+
+<!-- Reaction Engineering -->
+<div class="card">
+<h2>Reaction Engineering</h2>
+
+<div class="item">🧪 <a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Virtual%20Reactor%20Lab.html">Virtual Reactor Lab</a></div>
+<div class="item">🧪 <a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Batch%20Reactor%20Data.html">Batch Reactor Data</a></div>
+<div class="item">🧪 <a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/PFR%20Kinetics.html">PFR Simulator</a></div>
+<div class="item">📄 <a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/PFR%20Kinetics%20Guided%20Inquiry.pdf">PFR Guided Inquiry</a></div>
+<div class="item">🧪 <a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Packed%20Bed%20Simulation.html">Packed Bed</a></div>
+<div class="item">🧪 <a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Catalytic%20Reaction%20Rate%20Module.html">Catalytic Rate Module</a></div>
+<div class="item">🧪 <a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Dahkohler%20Game.html">Damköhler Game</a></div>
+
+</div>
+
+<!-- Levenspiel -->
+<div class="card">
+<h2>Levenspiel Plots</h2>
+
+<div class="item">
+📄 <a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Levenspiel%20Plots%20Guided%20Inquiry.pdf">Guided Inquiry</a>
+</div>
+
+<div class="item">
+🧪 <a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Levenspiel_Plots.html">Interactive</a>
+</div>
+</div>
+
+<!-- Transport -->
+<div class="card">
+<h2>Fluid Mechanics</h2>
+
+<div class="item">🧪 <a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Reynolds%20Number%20Explorer.html">Reynolds Explorer</a></div>
+<div class="item">📄 <a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Reynolds%20Number%20Explorer%20Guided%20Inquiry.pdf">Reynolds Activity</a></div>
+<div class="item">🧪 <a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Moody%20Diagram.html">Moody Diagram</a></div>
+<div class="item">🧪 <a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Navier%20Stokes%20Simplification.html">Navier–Stokes</a></div>
+<div class="item">🧪 <a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Shape%20Factor%20Calculator.html">Shape Factor</a></div>
+
+</div>
+
+<!-- Manometer -->
+<div class="card">
+<h2>Manometers</h2>
+
+<div class="item">📄 <a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Manometer%20Inquiry%20Worksheet.pdf">Worksheet</a></div>
+<div class="item">🧪 <a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Manometer%20Simulation.html">Simulation</a></div>
+</div>
+
+<!-- Thermo -->
+<div class="card">
+<h2>Thermodynamics Tools</h2>
+
+<div class="item">📄 <a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Standard%20Volumetric%20Flowrates%20Guided%20Inquiry.pdf">Flowrates</a></div>
+<div class="item">📄 <a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Steam%20Table%20Calculator%20Guided%20Inquiry%20Activity.docx">Steam Tables</a></div>
+<div class="item">🧮 <a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Steam%20Table%20Calculator.html">Steam Tool</a></div>
+<div class="item">📄 <a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Virial%20EOS%20Guided%20Inquiry.pdf">Virial EOS</a></div>
+<div class="item">🧪 <a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Virial%20EOS.html">Virial Tool</a></div>
+
+</div>
+
+<!-- Misc -->
+<div class="card">
+<h2>Concept Builders & Games</h2>
+
+<div class="item">🧪 <a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Energy%20Balance%20Blaster.html">Energy Balance Blaster</a></div>
+<div class="item">🧪 <a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Buckingham%20Pi%20Game.html">Buckingham Pi</a></div>
+<div class="item">🧪 <a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Catalysis%20Brochure.html">Catalysis Brochure</a></div>
+
+</div>
+
+<!-- Psychrometrics -->
+<div class="card">
+<h2>Psychrometrics</h2>
+
+<div class="item">📄 <a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/psychrometric_activity_guide.html">Guide</a></div>
+<div class="item">🧪 <a href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/psychrometric_chart_simulator.html">Simulator</a></div>
+</div>
+
+</div>
+</div>
+<footer>
+    © 2026 by David L. Silverstein and/or Loyal P. Murphy. All Rights Reserved.
+</footer>
 </body>
 </html>
