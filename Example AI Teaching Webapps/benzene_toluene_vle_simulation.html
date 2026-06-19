@@ -1,642 +1,314 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Benzene-Toluene VLE Simulation</title>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f8fafc;
-            color: #1f2937;
-        }
-        .slider-container {
-            display: grid;
-            grid-template-columns: auto 1fr auto;
-            align-items: center;
-            gap: 0.5rem;
-            margin-bottom: 0.5rem;
-        }
-        .slider {
-            -webkit-appearance: none;
-            width: 100%;
-            height: 8px;
-            border-radius: 5px;
-            background: #d1d5db;
-            outline: none;
-            opacity: 0.7;
-            -webkit-transition: .2s;
-            transition: opacity .2s;
-        }
-        .slider:hover {
-            opacity: 1;
-        }
-        .slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: #2563eb;
-            cursor: pointer;
-        }
-        .slider::-moz-range-thumb {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: #2563eb;
-            cursor: pointer;
-        }
-        .chart .domain {
-            stroke: #4b5563;
-        }
-        .chart .grid-line {
-            stroke: #e5e7eb;
-            stroke-dasharray: 2,2;
-        }
-        .chart text {
-            font-size: 12px;
-            fill: #4b5563;
-        }
-        .chart-title {
-            font-size: 1.125rem;
-            font-weight: 600;
-            text-anchor: middle;
-            fill: #1f2937;
-        }
-        .tie-line {
-            stroke: #ef4444;
-            stroke-width: 2px;
-        }
-        .state-point {
-            fill: #22c55e;
-            stroke: #1f2937;
-            stroke-width: 1px;
-        }
-        .liquid-point {
-            fill: #3b82f6;
-            stroke: #1f2937;
-            stroke-width: 1px;
-        }
-        .vapor-point {
-            fill: #ef4444;
-            stroke: #1f2937;
-            stroke-width: 1px;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Generated Chemical Engineering Resources</title>
+
+<style>
+body { font-family: Arial; margin:0; background:#f4f6f9; }
+header { background:#002b45; color:white; text-align:center; padding:20px; }
+
+.section { padding:20px; }
+h2 { margin-bottom:10px; }
+
+.grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:18px;
+}
+
+.card {
+  background:white;
+  border-radius:10px;
+  box-shadow:0 3px 8px rgba(0,0,0,.15);
+  overflow:hidden;
+}
+
+.card iframe {
+  width:100%;
+  height:160px;
+  border:none;
+}
+
+.card-content { padding:10px; }
+.title { font-weight:bold; margin-bottom:6px; }
+
+.buttons a, .buttons button {
+  margin:4px;
+  padding:6px 10px;
+  border-radius:6px;
+  font-size:.85em;
+  border:none;
+  text-decoration:none;
+  cursor:pointer;
+}
+
+.app { background:#0078D4; color:white; }
+.assignment { background:#28a745; color:white; }
+.preview { background:#444; color:white; }
+
+footer {
+  background:#002b45;
+  color:white;
+  text-align:center;
+  padding:12px;
+}
+
+.modal {
+  display:none;
+  position:fixed;
+  width:100%;
+  height:100%;
+  background:rgba(0,0,0,.7);
+}
+
+.modal-content {
+  position:absolute;
+  top:5%;
+  left:5%;
+  width:90%;
+  height:90%;
+  background:white;
+}
+
+.modal iframe { width:100%; height:100%; border:none; }
+</style>
 </head>
-<body class="p-4 md:p-8">
 
-    <div class="max-w-7xl mx-auto">
-        <h1 class="text-3xl font-bold text-center mb-6 text-blue-700">Benzene-Toluene VLE Simulation</h1>
-        
-        <!-- Main Content Grid -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<body>
 
-            <!-- Left Column: Controls & Schematic -->
-            <div class="lg:col-span-1 bg-white p-6 rounded-lg shadow-lg">
-                <h2 class="text-xl font-semibold mb-4">Controls</h2>
-                
-                <!-- Sliders -->
-                <div class="space-y-4">
-                    <div class="slider-container">
-                        <label for="temp" class="text-sm font-medium">Temperature (°C)</label>
-                        <input type="range" id="temp" class="slider" min="60" max="120" value="90" step="0.1">
-                        <span id="temp-value" class="text-sm font-semibold w-16 text-right">90.0 °C</span>
-                    </div>
-                    <div class="slider-container">
-                        <label for="pressure" class="text-sm font-medium">Pressure (atm)</label>
-                        <input type="range" id="pressure" class="slider" min="0.5" max="2.0" value="1.0" step="0.01">
-                        <span id="pressure-value" class="text-sm font-semibold w-16 text-right">1.00 atm</span>
-                    </div>
-                    <div class="slider-container">
-                        <label for="z1" class="text-sm font-medium">Benzene (z₁)</label>
-                        <input type="range" id="z1" class="slider" min="0" max="1" value="0.5" step="0.01">
-                        <span id="z1-value" class="text-sm font-semibold w-16 text-right">0.50</span>
-                    </div>
-                </div>
+<header>
+<h1>AI Generated Chemical Engineering Resources</h1>
+</header>
 
-                <!-- Readouts -->
-                <div class="mt-6 pt-6 border-t">
-                    <h3 class="text-lg font-semibold mb-3">Equilibrium State</h3>
-                    <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                        <span class="font-medium">Phase State:</span>
-                        <span id="phase-state" class="font-bold text-blue-600 text-right">--</span>
-                        
-                        <span class="font-medium">Vapor Fraction (V/F):</span>
-                        <span id="vfrac-value" class="font-bold text-right">--</span>
-                        
-                        <span class="font-medium">Liquid Benzene (x₁):</span>
-                        <span id="x1-value" class="font-bold text-right">--</span>
-                        
-                        <span class="font-medium">Vapor Benzene (y₁):</span>
-                        <span id="y1-value" class="font-bold text-right">--</span>
-                    </div>
-                </div>
+<script>
+const base = "https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/";
+function u(f){ return base + encodeURIComponent(f); }
+function openModal(el){
+ document.getElementById("modalFrame").src = el.dataset.url;
+ document.getElementById("modal").style.display="block";
+}
+function closeModal(){
+ document.getElementById("modal").style.display="none";
+ document.getElementById("modalFrame").src="";
+}
+</script>
 
-                <!-- Schematic -->
-                <div class="mt-6 pt-6 border-t">
-                    <h3 class="text-lg font-semibold mb-3">Piston-Cylinder</h3>
-                    <!-- Container: h-64 = 256px -->
-                    <div class="w-48 h-64 mx-auto bg-gray-100 border-2 border-gray-700 rounded-lg relative overflow-hidden">
-                        <!-- Piston: h-4 = 16px. Removed top-0. Added id="piston" -->
-                        <div id="piston" class="w-full h-4 bg-gray-500 absolute border-b-4 border-gray-700 transition-all duration-300" style="top: 0px;"></div>
-                        <!-- Vapor Phase: Removed top-4 -->
-                        <div id="vapor-phase" class="w-full absolute transition-all duration-300" style="top: 16px; height: 112px; background-color: #e0f2fe;"></div>
-                        <!-- Liquid Phase -->
-                        <div id="liquid-phase" class="w-full absolute bottom-0 transition-all duration-300" style="height: 112px; background-color: #3b82f6;"></div>
-                        <!-- Heating Element -->
-                        <div class="absolute bottom-2 left-1/2 -translate-x-1/2 w-3/4 h-2 bg-red-600 rounded-full opacity-75"></div>
-                    </div>
-                </div>
-            </div>
+<!-- MATERIAL & ENERGY BALANCES -->
+<div class="section">
+<h2>Material & Energy Balances</h2>
+<div class="grid">
 
-            <!-- Right Column: Charts -->
-            <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow-lg min-h-[600px] flex flex-col gap-6">
-                <!-- Pxy Diagram -->
-                <div id="pxy-chart-container" class="flex-1 w-full h-1/2">
-                    <svg id="pxy-chart" class="chart w-full h-full"></svg>
-                </div>
-                <!-- Txy Diagram -->
-                <div id="txy-chart-container" class="flex-1 w-full h-1/2">
-                    <svg id="txy-chart" class="chart w-full h-full"></svg>
-                </div>
-            </div>
+<!-- Balance + Thermo combined -->
 
-        </div> <!-- /Main Content Grid -->
-    </div> <!-- /max-w-7xl -->
+<div class="card">
+<iframe src="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Ethanol%20Process%20Simulator.html"></iframe>
+<div class="card-content">
+<div class="title">Ethanol Process</div>
+<div class="buttons">
+<button class="preview" onclick="openModal(this)" data-url="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Ethanol%20Process%20Simulator.html">Preview</button>
+<a class="app" target="_blank" href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Ethanol%20Process%20Simulator.html">App</a>
+<a class="assignment" target="_blank" href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Ethanol%20Process%20Guided%20Inquiry%20Activity.docx">Activity</a>
+</div>
+</div>
+</div>
 
-    <script type="module">
-        // --- Constants ---
-        const ATM_TO_PA = 101325;
-        const PA_TO_ATM = 1 / ATM_TO_PA;
-        
-        // Antoine Constants for P_sat in Pa, T in °C
-        // P_sat = 10^(A - B / (T + C)) * 133.322387415
-        const antoine = {
-            benzene: { A: 6.89272, B: 1203.531, C: 219.888, K_PA: 133.322387415 }, // Benzene (1)
-            toluene: { A: 6.95087, B: 1342.310, C: 219.187, K_PA: 133.322387415 }  // Toluene (2)
-        };
+<div class="card">
+<iframe src="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Manometer%20Simulation.html"></iframe>
+<div class="card-content">
+<div class="title">Manometer</div>
+<div class="buttons">
+<button class="preview" onclick="openModal(this)" data-url="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Manometer%20Simulation.html">Preview</button>
+<a class="app" target="_blank" href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Manometer%20Simulation.html">App</a>
+<a class="assignment" target="_blank" href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Manometer%20Inquiry%20Worksheet.pdf">Activity</a>
+</div>
+</div>
+</div>
 
-        // --- Thermodynamic Functions ---
+<div class="card">
+<iframe src="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Standard%20Volumetric%20Flowrates.html"></iframe>
+<div class="card-content">
+<div class="title">Standard Volumetric Flowrates</div>
+<div class="buttons">
+<button class="preview" onclick="openModal(this)" data-url="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Standard%20Volumetric%20Flowrates.html">Preview</button>
+<a class="app" target="_blank" href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Standard%20Volumetric%20Flowrates.html">App</a>
+<a class="assignment" target="_blank" href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Standard%20Volumetric%20Flowrates%20Guided%20Inquiry.pdf">Activity</a>
+</div>
+</div>
+</div>
 
-        /**
-         * Calculates vapor pressure of a component using Antoine equation.
-         * @param {number} T_C - Temperature in Celsius.
-         * @param {object} c - Component's Antoine constants.
-         * @returns {number} - Saturated vapor pressure in Pascals (Pa).
-         */
-        function calc_Psat(T_C, c) {
-            return Math.pow(10, c.A - c.B / (T_C + c.C)) * c.K_PA;
-        }
-        const calc_Psat_1 = (T_C) => calc_Psat(T_C, antoine.benzene);
-        const calc_Psat_2 = (T_C) => calc_Psat(T_C, antoine.toluene);
+<div class="card">
+<iframe src="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/psychrometric_chart_simulator.html"></iframe>
+<div class="card-content">
+<div class="title">Psychrometric Chart</div>
+<div class="buttons">
+<button class="preview" onclick="openModal(this)" data-url="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/psychrometric_chart_simulator.html">Preview</button>
+<a class="app" target="_blank" href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/psychrometric_chart_simulator.html">App</a>
+<a class="assignment" target="_blank" href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/psychrometric_activity_guide.html">Activity</a>
+</div>
+</div>
+</div>
 
-        /**
-         * Solves the Rachford-Rice equation for V/F using the bisection method.
-         * f(V) = sum( z_i * (K_i - 1) / (1 + V * (K_i - 1)) )
-         * @param {number} z1 - Overall mole fraction of component 1.
-         * @param {number} K1 - K-value for component 1 (Psat1/P).
-         * @param {number} K2 - K-value for component 2 (Psat2/P).
-         * @returns {number} - Equilibrium vapor fraction (V/F).
-         */
-        function solve_RachfordRice(z1, K1, K2) {
-            const z2 = 1 - z1;
-            const f = (V) => (z1 * (K1 - 1)) / (1 + V * (K1 - 1)) + (z2 * (K2 - 1)) / (1 + V * (K2 - 1));
+<div class="card">
+<iframe src="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/VLE%20Simulation.html"></iframe>
+<div class="title">VLE Simulation</div>
+<div class="buttons">
+<a class="app" target="_blank" href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/VLE%20Simulation.html">App</a>
+<a class="assignment" target="_blank" href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/VLE%20Simulation%20Guided%20Inquiry.pdf">Activity</a>
+</div>
+</div>
 
-            // K1 > 1 and K2 < 1 for VLE
-            if (f(0) < 0 || f(1) > 0) {
-                 // This can happen with numerical error, check bounds
-                if (Math.abs(f(0)) < 1e-6) return 0;
-                if (Math.abs(f(1)) < 1e-6) return 1;
-                // Root is not bracketed, something is wrong (e.g., not two-phase)
-                return NaN; 
-            }
+<div class="card">
+<iframe src="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Txy%20Interactive%20Plot.html"></iframe>
+<div class="title">Txy Diagram</div>
+<div class="buttons">
+<a class="app" target="_blank" href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Txy%20Interactive%20Plot.html">App</a>
+<a class="assignment" target="_blank" href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Txy%20Guided%20Inquiry.pdf">Activity</a>
+</div>
+</div>
 
-            let V_low = 0;
-            let V_high = 1;
-            let V_mid = 0.5;
-            let f_mid = f(V_mid);
-            const TOL = 1e-6;
-            let iter = 0;
+<div class="card">
+<iframe src="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Virial%20EOS.html"></iframe>
+<div class="title">Virial EOS</div>
+<div class="buttons">
+<a class="app" target="_blank" href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Virial%20EOS.html">App</a>
+<a class="assignment" target="_blank" href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Virial%20EOS%20Guided%20Inquiry.pdf">Activity</a>
+</div>
+</div>
 
-            while (Math.abs(f_mid) > TOL && iter < 100) {
-                if (f_mid > 0) {
-                    V_low = V_mid;
-                } else {
-                    V_high = V_mid;
-                }
-                V_mid = (V_low + V_high) / 2;
-                f_mid = f(V_mid);
-                iter++;
-            }
-            return V_mid;
-        }
+<div class="card">
+<iframe src="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Steam%20Table%20Calculator.html"></iframe>
+<div class="title">Steam Table Calculator</div>
+<div class="buttons">
+<a class="app" target="_blank" href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Steam%20Table%20Calculator.html">App</a>
+<a class="assignment" target="_blank" href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Steam%20Table%20Calculator%20Guided%20Inquiry%20Activity.docx">Activity</a>
+</div>
+</div>
 
-        /**
-         * Finds bubble point temperature at a given pressure and liquid composition.
-         * Solves f(T) = x1*Psat1(T) + x2*Psat2(T) - P_const = 0
-         * @param {number} x1 - Liquid mole fraction of component 1.
-         * @param {number} P_const_Pa - Constant pressure in Pascals.
-         * @returns {number} - Bubble point temperature in Celsius.
-         */
-        function solve_T_bub(x1, P_const_Pa) {
-            const x2 = 1 - x1;
-            const f = (T) => x1 * calc_Psat_1(T) + x2 * calc_Psat_2(T) - P_const_Pa;
-            
-            // Use bisection method with a wider, more robust range
-            let T_low = 40; 
-            let T_high = 150;
-            let T_mid = (T_low + T_high) / 2;
-            let f_mid = f(T_mid);
-            const TOL = 1e-3; // Tolerance in Pa is fine
-            let iter = 0;
-            
-            while (Math.abs(f_mid) > TOL && iter < 100) {
-                if (f(T_low) * f_mid < 0) {
-                    T_high = T_mid;
-                } else {
-                    T_low = T_mid;
-                }
-                T_mid = (T_low + T_high) / 2;
-                f_mid = f(T_mid);
-                iter++;
-            }
-            return T_mid;
-        }
-        
-        /**
-         * Finds dew point temperature at a given pressure and vapor composition.
-         * Solves f(T) = 1 / (y1/Psat1(T) + y2/Psat2(T)) - P_const = 0
-         * @param {number} y1 - Vapor mole fraction of component 1.
-         * @param {number} P_const_Pa - Constant pressure in Pascals.
-         * @returns {number} - Dew point temperature in Celsius.
-         */
-        function solve_T_dew(y1, P_const_Pa) {
-            const y2 = 1 - y1;
-            const f = (T) => 1 / (y1 / calc_Psat_1(T) + y2 / calc_Psat_2(T)) - P_const_Pa;
+</div>
+</div>
 
-            // Use bisection method with a wider, more robust range
-            let T_low = 40;
-            let T_high = 150;
-            let T_mid = (T_low + T_high) / 2;
-            let f_mid = f(T_mid);
-            const TOL = 1e-3;
-            let iter = 0;
+<!-- TRANSPORT -->
+<div class="section">
+<h2>Transport Phenomena</h2>
+<div class="grid">
 
-            // Removed faulty bracketing check that caused curve to disappear
-            
-            while (Math.abs(f_mid) > TOL && iter < 100) {
-                 if (f(T_low) * f_mid < 0) {
-                    T_high = T_mid;
-                } else {
-                    T_low = T_mid;
-                }
-                T_mid = (T_low + T_high) / 2;
-                f_mid = f(T_mid);
-                iter++;
-            }
-            return T_mid;
-        }
+<div class="card">
+<iframe src="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/2d_heat_distribution_simulator.html"></iframe>
+<div class="title">2D Heat Conduction</div>
+<div class="buttons">
+<a class="app" target="_blank" href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/2d_heat_distribution_simulator.html">App</a>
+<a class="assignment" target="_blank" href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/2D%20Heat%20Conduction%20Guided%20Inquiry.docx">Activity</a>
+</div>
+</div>
 
+<div class="card">
+<iframe src="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Reynolds%20Number%20Explorer.html"></iframe>
+<div class="title">Reynolds Number Explorer</div>
+<div class="buttons">
+<a class="app" target="_blank" href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Reynolds%20Number%20Explorer.html">App</a>
+<a class="assignment" target="_blank" href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Reynolds%20Number%20Explorer%20Guided%20Inquiry.pdf">Activity</a>
+</div>
+</div>
 
-        // --- D3 Chart Setup ---
-        const margin = { top: 40, right: 30, bottom: 50, left: 60 };
-        let pxy_svg, pxy_x, pxy_y, pxy_width, pxy_height;
-        let txy_svg, txy_x, txy_y, txy_width, txy_height;
+<div class="card">
+<iframe src="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Moody%20Diagram.html"></iframe>
+<div class="title">Moody Diagram</div>
+</div>
 
-        function setupCharts() {
-            // Pxy Chart
-            const pxy_container = d3.select("#pxy-chart-container");
-            const pxy_dims = pxy_container.node().getBoundingClientRect();
-            pxy_width = pxy_dims.width - margin.left - margin.right;
-            pxy_height = pxy_dims.height - margin.top - margin.bottom;
+<div class="card">
+<iframe src="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Navier%20Stokes%20Simplification.html"></iframe>
+<div class="title">Navier-Stokes Simplification</div>
+</div>
 
-            d3.select("#pxy-chart").selectAll("*").remove(); // Clear previous
-            pxy_svg = d3.select("#pxy-chart")
-                .append("g")
-                .attr("transform", `translate(${margin.left},${margin.top})`);
+<div class="card">
+<iframe src="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Shape%20Factor%20Calculator.html"></iframe>
+<div class="title">Shape Factor Calculator</div>
+</div>
 
-            pxy_x = d3.scaleLinear().domain([0, 1]).range([0, pxy_width]);
-            pxy_y = d3.scaleLinear().range([pxy_height, 0]); // Domain set in update
+<div class="card">
+<iframe src="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Buckingham%20Pi%20Game.html"></iframe>
+<div class="title">Buckingham π Game</div>
+</div>
 
-            pxy_svg.append("g")
-                .attr("class", "x-axis")
-                .attr("transform", `translate(0,${pxy_height})`)
-                .call(d3.axisBottom(pxy_x));
-            
-            pxy_svg.append("g").attr("class", "y-axis").call(d3.axisLeft(pxy_y));
+<div class="card">
+<iframe src="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Dahkohler%20Game.html"></iframe>
+<div class="title">Damköhler Game</div>
+</div>
 
-            // Pxy Axis Labels
-            pxy_svg.append("text")
-                .attr("x", pxy_width / 2)
-                .attr("y", pxy_height + margin.bottom - 10)
-                .style("text-anchor", "middle")
-                .text("Mole Fraction (x₁, y₁)");
-            
-            pxy_svg.append("text")
-                .attr("transform", "rotate(-90)")
-                .attr("y", 0 - margin.left + 15)
-                .attr("x", 0 - (pxy_height / 2))
-                .style("text-anchor", "middle")
-                .text("Pressure (atm)");
+</div>
+</div>
 
-            // Pxy Title
-            pxy_svg.append("text")
-                .attr("class", "chart-title")
-                .attr("id", "pxy-title")
-                .attr("x", pxy_width / 2)
-                .attr("y", 0 - (margin.top / 2))
-                .text("Pxy Diagram");
-            
-            // Pxy Gridlines
-            pxy_svg.append("g").attr("class", "grid-x");
-            pxy_svg.append("g").attr("class", "grid-y");
+<!-- REACTION ENGINEERING -->
+<div class="section">
+<h2>Reactor Engineering</h2>
+<div class="grid">
 
-            // Pxy Paths
-            pxy_svg.append("path").attr("class", "bubble-line stroke-blue-500 fill-none stroke-2");
-            pxy_svg.append("path").attr("class", "dew-line stroke-red-500 fill-none stroke-2");
-            
-            // Pxy Points/Lines
-            pxy_svg.append("line").attr("class", "tie-line");
-            pxy_svg.append("circle").attr("class", "state-point").attr("r", 5);
-            pxy_svg.append("circle").attr("class", "liquid-point").attr("r", 5);
-            pxy_svg.append("circle").attr("class", "vapor-point").attr("r", 5);
+<div class="card">
+<iframe src="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Batch%20Reactor%20Data.html"></iframe>
+<div class="title">Batch Reactor Data</div>
+</div>
 
-            // Txy Chart
-            const txy_container = d3.select("#txy-chart-container");
-            const txy_dims = txy_container.node().getBoundingClientRect();
-            txy_width = txy_dims.width - margin.left - margin.right;
-            txy_height = txy_dims.height - margin.top - margin.bottom;
-            
-            d3.select("#txy-chart").selectAll("*").remove(); // Clear previous
-            txy_svg = d3.select("#txy-chart")
-                .append("g")
-                .attr("transform", `translate(${margin.left},${margin.top})`);
-            
-            txy_x = d3.scaleLinear().domain([0, 1]).range([0, txy_width]);
-            txy_y = d3.scaleLinear().range([txy_height, 0]); // Domain set in update
+<div class="card">
+<iframe src="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/PFR%20Kinetics.html"></iframe>
+<div class="title">PFR Kinetics</div>
+<div class="buttons">
+<a class="assignment" target="_blank" href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/PFR%20Kinetics%20Guided%20Inquiry.pdf">Activity</a>
+</div>
+</div>
 
-            txy_svg.append("g")
-                .attr("class", "x-axis")
-                .attr("transform", `translate(0,${txy_height})`)
-                .call(d3.axisBottom(txy_x));
-            
-            txy_svg.append("g").attr("class", "y-axis").call(d3.axisLeft(txy_y));
-            
-            // Txy Axis Labels
-            txy_svg.append("text")
-                .attr("x", txy_width / 2)
-                .attr("y", txy_height + margin.bottom - 10)
-                .style("text-anchor", "middle")
-                .text("Mole Fraction (x₁, y₁)");
-            
-            txy_svg.append("text")
-                .attr("transform", "rotate(-90)")
-                .attr("y", 0 - margin.left + 15)
-                .attr("x", 0 - (txy_height / 2))
-                .style("text-anchor", "middle")
-                .text("Temperature (°C)");
+<div class="card">
+<iframe src="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Levenspiel_Plots.html"></iframe>
+<div class="title">Levenspiel Plots</div>
+<div class="buttons">
+<a class="assignment" target="_blank" href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Levenspiel%20Plots%20Guided%20Inquiry.pdf">Activity</a>
+</div>
+</div>
 
-            // Txy Title
-            txy_svg.append("text")
-                .attr("class", "chart-title")
-                .attr("id", "txy-title")
-                .attr("x", txy_width / 2)
-                .attr("y", 0 - (margin.top / 2))
-                .text("Txy Diagram");
-            
-            // Txy Gridlines
-            txy_svg.append("g").attr("class", "grid-x");
-            txy_svg.append("g").attr("class", "grid-y");
+<div class="card">
+<iframe src="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Packed%20Bed%20Simulation.html"></iframe>
+<div class="title">Packed Bed Reactor</div>
+</div>
 
-            // Txy Paths
-            txy_svg.append("path").attr("class", "bubble-line stroke-blue-500 fill-none stroke-2");
-            txy_svg.append("path").attr("class", "dew-line stroke-red-500 fill-none stroke-2");
+<div class="card">
+<iframe src="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Catalytic%20Reaction%20Rate%20Module.html"></iframe>
+<div class="title">Catalytic Reaction Rate</div>
+</div>
 
-            // Txy Points/Lines
-            txy_svg.append("line").attr("class", "tie-line");
-            txy_svg.append("circle").attr("class", "state-point").attr("r", 5);
-            txy_svg.append("circle").attr("class", "liquid-point").attr("r", 5);
-            txy_svg.append("circle").attr("class", "vapor-point").attr("r", 5);
-        }
+<div class="card">
+<iframe src="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Virtual%20Reactor%20Lab.html"></iframe>
+<div class="title">Virtual Reactor Lab</div>
+</div>
 
-        // --- Main Update Function ---
-        function update() {
-            // Get inputs
-            const T_C = parseFloat(d3.select("#temp").node().value);
-            const P_atm = parseFloat(d3.select("#pressure").node().value);
-            const z1 = parseFloat(d3.select("#z1").node().value);
-            const P_Pa = P_atm * ATM_TO_PA;
+<div class="card">
+<iframe src="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Hunter%20Nash%20LLE%20Simulator.html"></iframe>
+<div class="title">Hunter-Nash LLE</div>
+<div class="buttons">
+<a class="assignment" target="_blank" href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Hunter%20Nash%20LLE%20Guided%20Inquiry%20Activity.pdf">Activity</a>
+</div>
+</div>
 
-            // Update labels
-            d3.select("#temp-value").text(`${T_C.toFixed(1)} °C`);
-            d3.select("#pressure-value").text(`${P_atm.toFixed(2)} atm`);
-            d3.select("#z1-value").text(`${z1.toFixed(2)}`);
+<div class="card">
+<div class="card-content">
+<div class="title">Catalysis Brochure</div>
+<a class="app" target="_blank" href="https://dlsilverstein.github.io/APEx/Example%20AI%20Teaching%20Webapps/Catalysis%20Brochure.html">Open</a>
+</div>
+</div>
 
-            // --- VLE Calculations ---
-            const Psat_1 = calc_Psat_1(T_C);
-            const Psat_2 = calc_Psat_2(T_C);
+</div>
+</div>
 
-            const P_bub = z1 * Psat_1 + (1 - z1) * Psat_2;
-            const P_dew = 1 / (z1 / Psat_1 + (1 - z1) / Psat_2);
+<!-- MODAL -->
+<div id="modal" class="modal" onclick="closeModal()">
+<div class="modal-content">
+<iframe id="modalFrame"></iframe>
+</div>
+</div>
 
-            let phaseState = "";
-            let V_eq = 0, x1 = z1, y1 = z1;
+<footer>
+© 2026 by David L. Silverstein and/or Loyal P. Murphy. All Rights Reserved.
+</footer>
 
-            if (P_Pa > P_bub) {
-                // Subcooled Liquid
-                phaseState = "Subcooled Liquid";
-                V_eq = 0;
-                x1 = z1;
-                y1 = z1 * Psat_1 / P_bub; // y1 at bubble point
-            } else if (P_Pa < P_dew) {
-                // Superheated Vapor
-                phaseState = "Superheated Vapor";
-                V_eq = 1;
-                y1 = z1;
-                x1 = z1 * P_dew / Psat_1; // x1 at dew point
-            } else {
-                // Two-Phase Mixture
-                phaseState = "Two-Phase (VLE)";
-                const K1 = Psat_1 / P_Pa;
-                const K2 = Psat_2 / P_Pa;
-                
-                V_eq = solve_RachfordRice(z1, K1, K2);
-                x1 = z1 / (1 + V_eq * (K1 - 1));
-                y1 = K1 * x1;
-            }
-
-            // --- Update Readouts ---
-            d3.select("#phase-state").text(phaseState);
-            d3.select("#vfrac-value").text(V_eq.toFixed(3));
-            d3.select("#x1-value").text(x1.toFixed(3));
-            d3.select("#y1-value").text(y1.toFixed(3));
-
-            // --- Update Schematic ---
-            const containerHeight_px = 256; // from h-64
-            const pistonHeight_px = 16; // from h-4
-            
-            // Define min/max content heights
-            const minContentHeight_px = 120; // Content height at max P (2.0 atm)
-            const maxContentHeight_px = containerHeight_px - pistonHeight_px; // Content height at min P (0.5 atm)
-
-            // Create a scale to map pressure to total content height
-            const totalHeightScale = d3.scaleLinear()
-                .domain([0.5, 2.0]) // P_atm min, max
-                .range([maxContentHeight_px, minContentHeight_px]); // Inverted: low P -> high H, high P -> low H
-
-            const totalHeight_px = totalHeightScale(P_atm);
-
-            // Calculate positions and heights in pixels
-            const pistonTop_px = containerHeight_px - totalHeight_px - pistonHeight_px;
-            const vaporTop_px = pistonTop_px + pistonHeight_px;
-
-            const vaporHeight_px = V_eq * totalHeight_px;
-            const liquidHeight_px = (1 - V_eq) * totalHeight_px;
-
-            // Apply styles
-            d3.select("#piston")
-                .style("top", `${pistonTop_px}px`);
-                
-            d3.select("#vapor-phase")
-                .style("top", `${vaporTop_px}px`)
-                .style("height", `${vaporHeight_px}px`)
-                .style("background-color", d3.interpolateLab("#f0f9ff", "#075985")(y1)); // Light to dark based on y1
-            
-            d3.select("#liquid-phase")
-                .style("height", `${liquidHeight_px}px`);
-
-            
-            // --- Update Pxy Diagram (at constant T) ---
-            const P_min = Math.min(Psat_1, Psat_2) * PA_TO_ATM * 0.9;
-            const P_max = Math.max(Psat_1, Psat_2) * PA_TO_ATM * 1.1;
-            pxy_y.domain([P_min, P_max]);
-            
-            pxy_svg.select(".y-axis").transition().call(d3.axisLeft(pxy_y));
-            d3.select("#pxy-title").text(`Pxy Diagram at ${T_C.toFixed(1)} °C`);
-
-            const frac_points = d3.range(0, 1.01, 0.01);
-            
-            // Bubble line (P vs x1)
-            const pxy_bubble_data = frac_points.map(x => ({
-                frac: x,
-                P: (x * Psat_1 + (1 - x) * Psat_2) * PA_TO_ATM
-            }));
-            
-            // Dew line (P vs y1)
-            const pxy_dew_data = frac_points.map(y => ({
-                frac: y,
-                P: (y === 0 || y === 1) ?
-                    (y === 0 ? Psat_2 * PA_TO_ATM : Psat_1 * PA_TO_ATM) :
-                    (1 / (y / Psat_1 + (1 - y) / Psat_2)) * PA_TO_ATM
-            }));
-
-            const p_line = d3.line()
-                .x(d => pxy_x(d.frac))
-                .y(d => pxy_y(d.P));
-            
-            pxy_svg.select(".bubble-line").datum(pxy_bubble_data).attr("d", p_line);
-            pxy_svg.select(".dew-line").datum(pxy_dew_data).attr("d", p_line);
-
-            // Update Pxy state points
-            pxy_svg.select(".state-point")
-                .attr("cx", pxy_x(z1))
-                .attr("cy", pxy_y(P_atm));
-
-            if (phaseState === "Two-Phase (VLE)") {
-                pxy_svg.select(".tie-line")
-                    .attr("x1", pxy_x(x1))
-                    .attr("y1", pxy_y(P_atm))
-                    .attr("x2", pxy_x(y1))
-                    .attr("y2", pxy_y(P_atm))
-                    .style("display", "block");
-                pxy_svg.select(".liquid-point")
-                    .attr("cx", pxy_x(x1))
-                    .attr("cy", pxy_y(P_atm))
-                    .style("display", "block");
-                pxy_svg.select(".vapor-point")
-                    .attr("cx", pxy_x(y1))
-                    .attr("cy", pxy_y(P_atm))
-                    .style("display", "block");
-            } else {
-                pxy_svg.select(".tie-line").style("display", "none");
-                pxy_svg.select(".liquid-point").style("display", "none");
-                pxy_svg.select(".vapor-point").style("display", "none");
-            }
-
-            // --- Update Txy Diagram (at constant P) ---
-            const T_min = Math.min(solve_T_bub(0, P_Pa), solve_T_bub(1, P_Pa)) - 5; // T_bp_toluene, T_bp_benzene
-            const T_max = Math.max(solve_T_bub(0, P_Pa), solve_T_bub(1, P_Pa)) + 5;
-            txy_y.domain([T_min, T_max]);
-            
-            txy_svg.select(".y-axis").transition().call(d3.axisLeft(txy_y));
-            d3.select("#txy-title").text(`Txy Diagram at ${P_atm.toFixed(2)} atm`);
-            
-            // Bubble line (T vs x1)
-            const txy_bubble_data = frac_points.map(x => ({
-                frac: x,
-                T: solve_T_bub(x, P_Pa)
-            }));
-            
-            // Dew line (T vs y1)
-            const txy_dew_data = frac_points.map(y => ({
-                frac: y,
-                T: solve_T_dew(y, P_Pa)
-            }));
-
-            const t_line = d3.line()
-                .x(d => txy_x(d.frac))
-                .y(d => txy_y(d.T));
-
-            txy_svg.select(".bubble-line").datum(txy_bubble_data).attr("d", t_line);
-            txy_svg.select(".dew-line").datum(txy_dew_data).attr("d", t_line);
-
-            // Update Txy state points
-            txy_svg.select(".state-point")
-                .attr("cx", txy_x(z1))
-                .attr("cy", txy_y(T_C));
-
-            if (phaseState === "Two-Phase (VLE)") {
-                txy_svg.select(".tie-line")
-                    .attr("x1", txy_x(x1))
-                    .attr("y1", txy_y(T_C))
-                    .attr("x2", txy_x(y1))
-                    .attr("y2", txy_y(T_C))
-                    .style("display", "block");
-                txy_svg.select(".liquid-point")
-                    .attr("cx", txy_x(x1))
-                    .attr("cy", txy_y(T_C))
-                    .style("display", "block");
-                txy_svg.select(".vapor-point")
-                    .attr("cx", txy_x(y1))
-                    .attr("cy", txy_y(T_C))
-                    .style("display", "block");
-            } else {
-                txy_svg.select(".tie-line").style("display", "none");
-                txy_svg.select(".liquid-point").style("display", "none");
-                txy_svg.select(".vapor-point").style("display", "none");
-            }
-        }
-
-        // --- Initial Setup and Event Listeners ---
-        function init() {
-            setupCharts();
-            update();
-
-            d3.select("#temp").on("input", update);
-            d3.select("#pressure").on("input", update);
-            d3.select("#z1").on("input", update);
-            
-            window.addEventListener("resize", () => {
-                setupCharts();
-                update();
-            });
-        }
-
-        init();
-    </script>
 </body>
 </html>
