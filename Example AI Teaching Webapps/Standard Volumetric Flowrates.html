@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gas Phase Flow Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #3b82f6;
+            cursor: pointer;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+        }
+        input[type='range']::-webkit-slider-thumb {
+            @apply slider-thumb;
+        }
+        input[type='range']::-moz-range-thumb {
+            @apply slider-thumb;
+        }
+        .no-spinner::-webkit-outer-spin-button,
+        .no-spinner::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .no-spinner {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-4xl bg-white rounded-2xl shadow-lg p-6 md:p-8 space-y-6">
+        
+        <!-- Header -->
+        <div class="text-center">
+            <h1 class="text-2xl md:text-3xl font-bold text-slate-900">Gas Phase Flow Simulator</h1>
+            <p class="text-slate-500 mt-1">Explore the relationship between different flow measurements for an ideal gas.</p>
+        </div>
+
+        <!-- Inputs Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+            
+            <!-- Temperature Input -->
+             <div class="bg-slate-50 p-4 rounded-lg">
+                <div class="flex justify-between items-baseline">
+                    <label for="temperature" class="text-md font-semibold text-slate-800">Temperature</label>
+                    <span class="text-lg font-bold text-slate-600"><span id="temperatureValue">20.0</span> °C</span>
+                </div>
+                <input type="range" id="temperature" min="-50" max="150" step="0.1" value="20" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer mt-2">
+            </div>
+
+            <!-- Pressure Input -->
+            <div class="bg-slate-50 p-4 rounded-lg">
+                <div class="flex justify-between items-baseline">
+                    <label for="pressure" class="text-md font-semibold text-slate-800">Pressure</label>
+                    <span class="text-lg font-bold text-slate-600"><span id="pressureValue">101.33</span> kPa</span>
+                </div>
+                <input type="range" id="pressure" min="1" max="200" step="0.01" value="101.325" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer mt-2">
+            </div>
+        </div>
+
+        <!-- Sliders and Graph -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 pt-4">
+
+            <!-- Flow Sliders -->
+            <div class="space-y-6">
+                <!-- Mass Flow -->
+                <div>
+                    <div class="flex justify-between items-baseline">
+                        <label for="massFlow" class="text-md font-semibold text-slate-800">Mass Flow</label>
+                        <span class="text-lg font-bold text-blue-600"><span id="massFlowValue">1.00</span> kg/s</span>
+                    </div>
+                    <input type="range" id="massFlow" min="0" max="10" step="0.01" value="1" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer mt-2">
+                </div>
+
+                <!-- Actual Volumetric Flow -->
+                <div>
+                    <div class="flex justify-between items-baseline">
+                        <label for="actualVolFlow" class="text-md font-semibold text-slate-800">Actual Volumetric Flow</label>
+                        <span class="text-lg font-bold text-green-600"><span id="actualVolFlowValue">0.83</span> m³/s</span>
+                    </div>
+                    <input type="range" id="actualVolFlow" min="0" max="20" step="0.01" value="0.83" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer mt-2">
+                </div>
+
+                <!-- Standard Volumetric Flow -->
+                <div>
+                    <div class="flex justify-between items-baseline">
+                        <label for="stdVolFlow" class="text-md font-semibold text-slate-800">Standard Volumetric Flow</label>
+                        <span class="text-lg font-bold text-purple-600"><span id="stdVolFlowValue">0.77</span> m³/s</span>
+                    </div>
+                    <input type="range" id="stdVolFlow" min="0" max="20" step="0.01" value="0.77" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer mt-2">
+                </div>
+            </div>
+            
+            <!-- Graphical Representation -->
+            <div class="bg-slate-50 p-4 rounded-lg flex flex-col justify-between min-h-[250px]">
+                <h3 class="text-center font-semibold text-slate-700 mb-4">Flow Comparison</h3>
+                <div class="flex-grow flex justify-around gap-4">
+                    <!-- Bar for Mass Flow -->
+                    <div class="flex flex-col items-center w-1/4">
+                        <div id="massFlowBarContainer" class="w-full flex-grow flex items-end">
+                            <div id="massFlowBar" class="w-full bg-blue-500 rounded-t-md transition-all duration-200" style="height: 10%;"></div>
+                        </div>
+                        <p class="text-xs text-center mt-2 text-slate-600">Mass</p>
+                    </div>
+                    <!-- Bar for Actual Volumetric Flow -->
+                    <div class="flex flex-col items-center w-1/4">
+                       <div id="actualVolFlowBarContainer" class="w-full flex-grow flex items-end">
+                            <div id="actualVolFlowBar" class="w-full bg-green-500 rounded-t-md transition-all duration-200" style="height: 4.15%;"></div>
+                        </div>
+                        <p class="text-xs text-center mt-2 text-slate-600">Actual</p>
+                    </div>
+                    <!-- Bar for Standard Volumetric Flow -->
+                    <div class="flex flex-col items-center w-1/4">
+                        <div id="stdVolFlowBarContainer" class="w-full flex-grow flex items-end">
+                            <div id="stdVolFlowBar" class="w-full bg-purple-500 rounded-t-md transition-all duration-200" style="height: 7.7%;"></div>
+                        </div>
+                        <p class="text-xs text-center mt-2 text-slate-600">Standard</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer with Assumptions -->
+        <div class="text-center text-xs text-slate-400 pt-4 border-t border-slate-200">
+            <p>Assumes Ideal Gas Law with Air (Molar Mass: 28.97 g/mol).</p>
+            <p>Standard conditions defined as 0°C (273.15 K) and 1 atm (101.325 kPa).</p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- CONSTANTS ---
+            const R = 8.31446; // Universal Gas Constant, J/(mol·K)
+            const M_AIR = 0.02897; // Molar Mass of Air, kg/mol
+            const T_STD_K = 273.15; // Standard Temperature, K
+            const P_STD_PA = 101325; // Standard Pressure, Pa
+
+            // --- DOM ELEMENTS ---
+            const tempSlider = document.getElementById('temperature');
+            const pressureSlider = document.getElementById('pressure');
+            
+            const massFlowSlider = document.getElementById('massFlow');
+            const actualVolFlowSlider = document.getElementById('actualVolFlow');
+            const stdVolFlowSlider = document.getElementById('stdVolFlow');
+
+            const temperatureValue = document.getElementById('temperatureValue');
+            const pressureValue = document.getElementById('pressureValue');
+            const massFlowValue = document.getElementById('massFlowValue');
+            const actualVolFlowValue = document.getElementById('actualVolFlowValue');
+            const stdVolFlowValue = document.getElementById('stdVolFlowValue');
+
+            const massFlowBar = document.getElementById('massFlowBar');
+            const actualVolFlowBar = document.getElementById('actualVolFlowBar');
+            const stdVolFlowBar = document.getElementById('stdVolFlowBar');
+            
+            let lastChanged = 'mass'; // To prevent infinite loops
+
+            // --- CORE CALCULATION FUNCTIONS ---
+
+            // Calculate others based on Mass Flow
+            function calculateFromMassFlow(massFlow, tempC, pressureKPa) {
+                const tempK = parseFloat(tempC) + 273.15;
+                const pressurePa = parseFloat(pressureKPa) * 1000;
+
+                if (M_AIR === 0 || pressurePa === 0 || R === 0 || tempK < 0) return { actualVolFlow: 0, stdVolFlow: 0 };
+                
+                // Q_actual = ṁ * R * T / (P * M)
+                const actualVolFlow = (massFlow * R * tempK) / (pressurePa * M_AIR);
+                
+                // Q_std = ṁ * R * T_std / (P_std * M)
+                const stdVolFlow = (massFlow * R * T_STD_K) / (P_STD_PA * M_AIR);
+
+                return { actualVolFlow, stdVolFlow };
+            }
+
+            // Calculate others based on Actual Volumetric Flow
+            function calculateFromActualVolFlow(actualVolFlow, tempC, pressureKPa) {
+                const tempK = parseFloat(tempC) + 273.15;
+                const pressurePa = parseFloat(pressureKPa) * 1000;
+
+                if (R === 0 || tempK <= 0) return { massFlow: 0, stdVolFlow: 0 };
+
+                // ṁ = Q_actual * P * M / (R * T)
+                const massFlow = (actualVolFlow * pressurePa * M_AIR) / (R * tempK);
+                
+                const { stdVolFlow } = calculateFromMassFlow(massFlow, tempC, pressureKPa);
+
+                return { massFlow, stdVolFlow };
+            }
+
+            // Calculate others based on Standard Volumetric Flow
+            function calculateFromStdVolFlow(stdVolFlow, tempC, pressureKPa) {
+                if (R === 0 || T_STD_K === 0) return { massFlow: 0, actualVolFlow: 0 };
+
+                // ṁ = Q_std * P_std * M / (R * T_std)
+                const massFlow = (stdVolFlow * P_STD_PA * M_AIR) / (R * T_STD_K);
+
+                const { actualVolFlow } = calculateFromMassFlow(massFlow, tempC, pressureKPa);
+
+                return { massFlow, actualVolFlow };
+            }
+
+            // --- UI UPDATE FUNCTION ---
+            function updateUI(values) {
+                // Update text values
+                massFlowValue.textContent = values.massFlow.toFixed(2);
+                actualVolFlowValue.textContent = values.actualVolFlow.toFixed(2);
+                stdVolFlowValue.textContent = values.stdVolFlow.toFixed(2);
+
+                // Update slider positions without triggering their events again
+                massFlowSlider.value = values.massFlow;
+                actualVolFlowSlider.value = values.actualVolFlow;
+                stdVolFlowSlider.value = values.stdVolFlow;
+
+                // Update bar heights
+                const massPercent = (values.massFlow / massFlowSlider.max) * 100;
+                
+                // Use a common max for volumetric flow bars for consistent scaling
+                const commonVolMax = Math.max(parseFloat(actualVolFlowSlider.max), parseFloat(stdVolFlowSlider.max));
+                const actualPercent = (values.actualVolFlow / commonVolMax) * 100;
+                const stdPercent = (values.stdVolFlow / commonVolMax) * 100;
+
+                massFlowBar.style.height = `${Math.max(0, Math.min(100, massPercent))}%`;
+                actualVolFlowBar.style.height = `${Math.max(0, Math.min(100, actualPercent))}%`;
+                stdVolFlowBar.style.height = `${Math.max(0, Math.min(100, stdPercent))}%`;
+            }
+
+            // --- EVENT HANDLERS ---
+            function handleMassFlowChange() {
+                lastChanged = 'mass';
+                const massFlow = parseFloat(massFlowSlider.value);
+                const { actualVolFlow, stdVolFlow } = calculateFromMassFlow(massFlow, tempSlider.value, pressureSlider.value);
+                updateUI({ massFlow, actualVolFlow, stdVolFlow });
+            }
+
+            function handleActualVolFlowChange() {
+                lastChanged = 'actual';
+                const actualVolFlow = parseFloat(actualVolFlowSlider.value);
+                const { massFlow, stdVolFlow } = calculateFromActualVolFlow(actualVolFlow, tempSlider.value, pressureSlider.value);
+                updateUI({ massFlow, actualVolFlow, stdVolFlow });
+            }
+            
+            function handleStdVolFlowChange() {
+                lastChanged = 'std';
+                const stdVolFlow = parseFloat(stdVolFlowSlider.value);
+                const { massFlow, actualVolFlow } = calculateFromStdVolFlow(stdVolFlow, tempSlider.value, pressureSlider.value);
+                updateUI({ massFlow, actualVolFlow, stdVolFlow });
+            }
+
+            function handleConditionsChange() {
+                // Update the text display for T and P
+                temperatureValue.textContent = parseFloat(tempSlider.value).toFixed(1);
+                pressureValue.textContent = parseFloat(pressureSlider.value).toFixed(2);
+
+                // When T or P changes, we assume mass flow is the conserved quantity and recalculate others.
+                const massFlow = parseFloat(massFlowSlider.value);
+                const { actualVolFlow, stdVolFlow } = calculateFromMassFlow(massFlow, tempSlider.value, pressureSlider.value);
+                updateUI({ massFlow, actualVolFlow, stdVolFlow });
+            }
+
+            // --- ATTACH LISTENERS ---
+            massFlowSlider.addEventListener('input', handleMassFlowChange);
+            actualVolFlowSlider.addEventListener('input', handleActualVolFlowChange);
+            stdVolFlowSlider.addEventListener('input', handleStdVolFlowChange);
+            tempSlider.addEventListener('input', handleConditionsChange);
+            pressureSlider.addEventListener('input', handleConditionsChange);
+            
+            // --- INITIALIZATION ---
+            function init() {
+                // Set initial text values for conditions
+                temperatureValue.textContent = parseFloat(tempSlider.value).toFixed(1);
+                pressureValue.textContent = parseFloat(pressureSlider.value).toFixed(2);
+                // Initial calculation based on default mass flow
+                handleMassFlowChange(); 
+            }
+
+            init();
+        });
+    </script>
+
+</body>
+</html>
